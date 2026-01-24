@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="nl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Floor Heating Installation Portal</title>
+    <title>Vloerverwarming Installatie</title>
     <style>
         * {
             margin: 0;
@@ -11,30 +11,15 @@
             box-sizing: border-box;
         }
 
-        :root {
-            --primary-color: #2563eb;
-            --success-color: #10b981;
-            --warning-color: #f59e0b;
-            --danger-color: #ef4444;
-            --gray-50: #f9fafb;
-            --gray-100: #f3f4f6;
-            --gray-200: #e5e7eb;
-            --gray-300: #d1d5db;
-            --gray-600: #4b5563;
-            --gray-800: #1f2937;
-            --gray-900: #111827;
-        }
-
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
-            color: var(--gray-800);
         }
 
         .container {
-            max-width: 800px;
+            max-width: 700px;
             margin: 0 auto;
         }
 
@@ -46,858 +31,369 @@
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
         }
 
-        .header {
-            background: white;
-            border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 20px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-            text-align: center;
-        }
-
-        .header h1 {
-            color: var(--primary-color);
+        h1 {
+            color: #667eea;
             font-size: 24px;
-            margin-bottom: 8px;
+            margin-bottom: 20px;
         }
 
-        .header .task-name {
-            font-size: 28px;
-            font-weight: 700;
-            color: var(--gray-900);
-            margin-bottom: 12px;
+        h2 {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 16px;
         }
 
-        .task-info {
+        .info-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-            margin-top: 16px;
+            gap: 12px;
+            margin-bottom: 20px;
         }
 
         .info-item {
-            text-align: center;
+            display: flex;
+            justify-content: space-between;
             padding: 12px;
-            background: var(--gray-50);
+            background: #f8f9fa;
             border-radius: 8px;
         }
 
         .info-label {
-            font-size: 12px;
-            color: var(--gray-600);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 4px;
+            font-weight: 600;
+            color: #666;
         }
 
         .info-value {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--gray-900);
-        }
-
-        .section-title {
-            font-size: 20px;
-            font-weight: 700;
-            color: var(--gray-900);
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .icon {
-            font-size: 24px;
+            color: #333;
         }
 
         .btn {
-            display: inline-block;
-            padding: 14px 28px;
-            border-radius: 8px;
-            font-weight: 600;
-            text-decoration: none;
-            border: none;
-            cursor: pointer;
-            font-size: 16px;
-            transition: all 0.3s ease;
-            text-align: center;
-        }
-
-        .btn-primary {
-            background: var(--primary-color);
+            display: block;
+            width: 100%;
+            padding: 16px;
+            background: #667eea;
             color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            margin-bottom: 12px;
         }
 
-        .btn-primary:hover {
-            background: #1d4ed8;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+        .btn:hover {
+            background: #5568d3;
         }
 
         .btn-success {
-            background: var(--success-color);
-            color: white;
+            background: #10b981;
         }
 
         .btn-success:hover {
             background: #059669;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
         }
 
-        .btn-block {
-            width: 100%;
-            display: block;
-        }
-
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .plan-section {
-            text-align: center;
-            padding: 32px;
-            background: linear-gradient(135deg, #667eea20 0%, #764ba220 100%);
-            border-radius: 12px;
-        }
-
-        .plan-version {
-            display: inline-block;
-            background: var(--primary-color);
-            color: white;
-            padding: 6px 16px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 16px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: var(--gray-700);
-        }
-
-        .form-input {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid var(--gray-200);
-            border-radius: 8px;
-            font-size: 16px;
-            transition: border-color 0.3s;
-        }
-
-        .form-input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-        }
-
-        .collector-buttons {
+        .collector-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            grid-template-columns: repeat(5, 1fr);
             gap: 10px;
             margin-bottom: 20px;
         }
 
         .collector-btn {
             padding: 16px;
-            border: 2px solid var(--gray-300);
+            border: 2px solid #ddd;
             background: white;
             border-radius: 8px;
             cursor: pointer;
             font-weight: 600;
-            font-size: 16px;
             transition: all 0.3s;
         }
 
         .collector-btn:hover {
-            border-color: var(--primary-color);
-            transform: translateY(-2px);
+            border-color: #667eea;
         }
 
         .collector-btn.selected {
-            background: var(--primary-color);
+            background: #667eea;
             color: white;
-            border-color: var(--primary-color);
+            border-color: #667eea;
         }
 
         .collector-btn.completed {
-            background: var(--success-color);
+            background: #10b981;
             color: white;
-            border-color: var(--success-color);
+            border-color: #10b981;
         }
 
-        .file-upload-area {
-            border: 2px dashed var(--gray-300);
+        .upload-area {
+            border: 2px dashed #ddd;
             border-radius: 8px;
-            padding: 40px 20px;
+            padding: 40px;
             text-align: center;
             cursor: pointer;
-            transition: all 0.3s;
-            background: var(--gray-50);
+            margin-bottom: 20px;
         }
 
-        .file-upload-area:hover {
-            border-color: var(--primary-color);
-            background: var(--gray-100);
-        }
-
-        .file-upload-area.drag-over {
-            border-color: var(--primary-color);
-            background: var(--primary-color)10;
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f8f9fa;
         }
 
         .file-list {
-            margin-top: 16px;
+            margin-top: 12px;
         }
 
         .file-item {
             display: flex;
-            align-items: center;
             justify-content: space-between;
-            padding: 12px;
-            background: var(--gray-50);
-            border-radius: 8px;
-            margin-bottom: 8px;
-        }
-
-        .file-item-name {
-            flex: 1;
-            font-size: 14px;
-            color: var(--gray-800);
-        }
-
-        .file-item-size {
-            font-size: 12px;
-            color: var(--gray-600);
-            margin: 0 12px;
-        }
-
-        .file-remove {
-            background: var(--danger-color);
-            color: white;
-            border: none;
-            padding: 6px 12px;
+            padding: 8px;
+            background: #f8f9fa;
             border-radius: 6px;
-            cursor: pointer;
-            font-size: 12px;
+            margin-bottom: 6px;
         }
 
-        .progress-bar {
-            width: 100%;
-            height: 8px;
-            background: var(--gray-200);
-            border-radius: 4px;
-            overflow: hidden;
-            margin-top: 16px;
+        .loading {
+            text-align: center;
+            padding: 40px;
         }
 
-        .progress-fill {
-            height: 100%;
-            background: var(--success-color);
-            width: 0%;
-            transition: width 0.3s;
-        }
-
-        .alert {
-            padding: 16px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            font-weight: 500;
-        }
-
-        .alert-info {
-            background: #dbeafe;
-            color: #1e40af;
-            border-left: 4px solid var(--primary-color);
-        }
-
-        .alert-success {
-            background: #d1fae5;
-            color: #065f46;
-            border-left: 4px solid var(--success-color);
-        }
-
-        .alert-error {
+        .error {
             background: #fee2e2;
             color: #991b1b;
-            border-left: 4px solid var(--danger-color);
-        }
-
-        .completed-collectors {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 16px;
-        }
-
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 16px;
-            background: var(--success-color);
-            color: white;
-            border-radius: 20px;
-            font-weight: 600;
-            font-size: 14px;
-        }
-
-        .loader {
-            text-align: center;
-            padding: 60px 20px;
-        }
-
-        .spinner {
-            border: 4px solid var(--gray-200);
-            border-top: 4px solid var(--primary-color);
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            padding: 16px;
+            border-radius: 8px;
         }
 
         .hidden {
             display: none;
         }
-
-        @media (max-width: 640px) {
-            body {
-                padding: 10px;
-            }
-
-            .card {
-                padding: 16px;
-            }
-
-            .header h1 {
-                font-size: 20px;
-            }
-
-            .header .task-name {
-                font-size: 22px;
-            }
-
-            .collector-buttons {
-                grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
-            }
-        }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Loading State -->
-        <div id="loading" class="card loader">
-            <div class="spinner"></div>
-            <p>Loading task information...</p>
+        <!-- Loading -->
+        <div id="loading" class="card loading">
+            <p>Gegevens laden...</p>
         </div>
 
-        <!-- Error State -->
-        <div id="error" class="card hidden">
-            <div class="alert alert-error">
-                <strong>⚠️ Error:</strong>
-                <p id="error-message">Unable to load task. Please check your link and try again.</p>
-            </div>
-        </div>
+        <!-- Error -->
+        <div id="error" class="card error hidden"></div>
 
-        <!-- Main Content -->
+        <!-- Content -->
         <div id="content" class="hidden">
-            <!-- Header -->
-            <div class="header">
-                <h1>🏗️ Floor Heating Installation</h1>
-                <div class="task-name" id="task-name">Loading...</div>
-                <div class="task-info">
-                    <div class="info-item">
-                        <div class="info-label">Project</div>
-                        <div class="info-value" id="project-name">-</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Deadline</div>
-                        <div class="info-value" id="deadline">-</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Status</div>
-                        <div class="info-value" id="status">-</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Plan Download Section -->
-            <div class="card" id="plan-section">
-                <div class="plan-section">
-                    <div class="section-title" style="justify-content: center;">
-                        <span class="icon">📄</span>
-                        <span>Floor Heating Plan</span>
-                    </div>
-                    <div class="plan-version" id="plan-version">Version: Loading...</div>
-                    <p style="color: var(--gray-600); margin-bottom: 20px;">
-                        Download the latest plan before starting work
-                    </p>
-                    <a href="#" id="plan-download-btn" class="btn btn-primary" target="_blank">
-                        ⬇️ Download Plan PDF
-                    </a>
-                </div>
-            </div>
-
-            <!-- Upload Section -->
+            <!-- Task Info -->
             <div class="card">
-                <div class="section-title">
-                    <span class="icon">📸</span>
-                    <span>Upload Collector Photos</span>
-                </div>
-
-                <div class="alert alert-info">
-                    <strong>Instructions:</strong><br>
-                    1. Select the collector number<br>
-                    2. Choose or drag photos to upload<br>
-                    3. Click "Upload Photos"<br>
-                    4. Repeat for each collector
-                </div>
-
-                <!-- Uploader Name -->
-                <div class="form-group">
-                    <label class="form-label" for="uploader-name">Your Name (optional)</label>
-                    <input type="text" id="uploader-name" class="form-input" placeholder="e.g., John Doe">
-                </div>
-
-                <!-- Collector Selection -->
-                <div class="form-group">
-                    <label class="form-label">Select Collector</label>
-                    <div class="collector-buttons" id="collector-buttons">
-                        <!-- Generated dynamically -->
+                <h1>🏗️ Vloerverwarming Installatie</h1>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Taak:</span>
+                        <span class="info-value" id="task-name">-</span>
                     </div>
+                    <div class="info-item">
+                        <span class="info-label">Locatie:</span>
+                        <span class="info-value" id="location">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Datum:</span>
+                        <span class="info-value" id="date">-</span>
+                    </div>
+                </div>
+
+                <!-- Download Plan -->
+                <a href="#" id="plan-btn" class="btn" target="_blank">
+                    📄 Download Plan
+                </a>
+            </div>
+
+            <!-- Upload Photos -->
+            <div class="card">
+                <h2>📸 Upload Collector Foto's</h2>
+                
+                <!-- Collector Selection -->
+                <p style="margin-bottom: 12px; color: #666;">Selecteer collector:</p>
+                <div class="collector-grid" id="collector-grid">
+                    <!-- Generated by JS -->
                 </div>
 
                 <!-- File Upload -->
-                <div class="form-group">
-                    <label class="form-label">Select Photos</label>
-                    <div class="file-upload-area" id="file-upload-area">
-                        <div class="icon" style="font-size: 48px; margin-bottom: 12px;">📁</div>
-                        <p style="font-weight: 600; margin-bottom: 8px;">
-                            Click to browse or drag files here
-                        </p>
-                        <p style="font-size: 14px; color: var(--gray-600);">
-                            Supports: JPG, PNG, PDF (max 10MB each)
-                        </p>
-                        <input type="file" id="file-input" multiple accept="image/*,application/pdf" class="hidden">
-                    </div>
-                    <div id="file-list" class="file-list"></div>
+                <div class="upload-area" id="upload-area">
+                    <p style="font-size: 48px; margin-bottom: 8px;">📁</p>
+                    <p style="font-weight: 600; margin-bottom: 4px;">Klik of sleep foto's hier</p>
+                    <p style="font-size: 14px; color: #666;">JPG, PNG (max 10MB)</p>
+                    <input type="file" id="file-input" multiple accept="image/*" class="hidden">
                 </div>
+
+                <!-- Selected Files -->
+                <div id="file-list" class="file-list"></div>
 
                 <!-- Upload Button -->
-                <button id="upload-btn" class="btn btn-success btn-block" disabled>
-                    Upload Photos
+                <button id="upload-btn" class="btn btn-success" disabled>
+                    Upload Foto's
                 </button>
-
-                <!-- Progress -->
-                <div id="upload-progress" class="hidden">
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="progress-fill"></div>
-                    </div>
-                    <p style="text-align: center; margin-top: 8px; color: var(--gray-600);" id="progress-text">
-                        Uploading...
-                    </p>
-                </div>
-
-                <!-- Success Message -->
-                <div id="upload-success" class="alert alert-success hidden">
-                    ✅ Photos uploaded successfully!
-                </div>
-
-                <!-- Completed Collectors -->
-                <div id="completed-section" class="hidden">
-                    <div class="form-label" style="margin-top: 24px;">Completed Collectors</div>
-                    <div class="completed-collectors" id="completed-collectors">
-                        <!-- Generated dynamically -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Complete Button -->
-            <div class="card" id="complete-section">
-                <button id="complete-btn" class="btn btn-primary btn-block">
-                    ✅ Mark All Photos Complete
-                </button>
-                <p style="text-align: center; margin-top: 12px; color: var(--gray-600); font-size: 14px;">
-                    Click this when you've uploaded photos for all collectors
-                </p>
-            </div>
-
-            <!-- Final Completion Message -->
-            <div class="card hidden" id="final-completion">
-                <div class="alert alert-success" style="text-align: center; font-size: 18px;">
-                    <div style="font-size: 48px; margin-bottom: 12px;">🎉</div>
-                    <strong>All photos completed!</strong><br>
-                    Thank you. Your uploads have been received.
-                </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Configuration - CHANGE THESE TO YOUR n8n WEBHOOK URLs
+        // Config
         const CONFIG = {
-            n8nFetchTaskUrl: 'https://thermoduct.app.n8n.cloud/webhook/fetch-task',
-            n8nUploadUrl: 'https://YOUR-N8N-INSTANCE.com/webhook/upload-photo',
-            n8nCompleteUrl: 'https://YOUR-N8N-INSTANCE.com/webhook/complete-task',
-            maxFileSize: 10 * 1024 * 1024, // 10MB
-            maxCollectors: 20 // Maximum number of collector buttons to show
+            n8nFetchUrl: 'https://thermoduct.app.n8n.cloud/webhook/fetch-task',
+            n8nUploadUrl: 'https://thermoduct.app.n8n.cloud/webhook/upload-photo',
+            maxCollectors: 20
         };
 
         // State
         let taskData = null;
         let selectedCollector = null;
         let selectedFiles = [];
-        let completedCollectors = [];
 
-        // Get task token from URL
-        function getTaskToken() {
-            const params = new URLSearchParams(window.location.search);
-            return params.get('task') || params.get('token');
+        // Get token from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+
+        // Elements
+        const loadingDiv = document.getElementById('loading');
+        const errorDiv = document.getElementById('error');
+        const contentDiv = document.getElementById('content');
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+        const uploadBtn = document.getElementById('upload-btn');
+
+        // Init
+        if (!token) {
+            showError('Geen token in URL. Voeg ?token=YOUR-TOKEN toe.');
+        } else {
+            fetchTaskData();
         }
 
-        // Initialize
-        async function init() {
-            const token = getTaskToken();
-
-            if (!token) {
-                showError('No task token provided in URL');
-                return;
-            }
-
-            await fetchTaskData(token);
-        }
-
-        // Fetch task data from n8n
-        async function fetchTaskData(token) {
+        // Fetch task data
+        async function fetchTaskData() {
             try {
-                const response = await fetch(`${CONFIG.n8nFetchTaskUrl}?token=${token}`);
-
-                if (!response.ok) {
-                    throw new Error('Task not found');
-                }
-
+                const response = await fetch(`${CONFIG.n8nFetchUrl}?token=${token}`);
+                if (!response.ok) throw new Error('Task not found');
+                
                 taskData = await response.json();
-                renderTaskData();
-
-                document.getElementById('loading').classList.add('hidden');
-                document.getElementById('content').classList.remove('hidden');
+                if (Array.isArray(taskData)) taskData = taskData[0];
+                
+                renderTask();
+                loadingDiv.classList.add('hidden');
+                contentDiv.classList.remove('hidden');
             } catch (error) {
-                showError(error.message);
+                showError('Kan taak niet laden: ' + error.message);
             }
         }
 
-        // Render task data
-        function renderTaskData() {
-            document.getElementById('task-name').textContent = taskData.task_name || 'Unnamed Task';
-            document.getElementById('project-name').textContent = taskData.project_name || 'N/A';
-            document.getElementById('deadline').textContent = taskData.deadline || 'Not set';
-            document.getElementById('status').textContent = taskData.photo_status || 'Not Started';
-
-            // Plan section
+        // Render task
+        function renderTask() {
+            // Task naam
+            document.getElementById('task-name').textContent = taskData.task_name || '-';
+            
+            // Locatie (project naam - TODO: dit moet aangepast worden naar een apart veld)
+            document.getElementById('location').textContent = taskData.project_name || '-';
+            
+            // Datum (alleen dag, niet tijd)
+            const deadline = taskData.deadline && taskData.deadline !== 'Not set' 
+                ? new Date(taskData.deadline).toLocaleDateString('nl-NL')
+                : 'Niet ingesteld';
+            document.getElementById('date').textContent = deadline;
+            
+            // Plan button
+            const planBtn = document.getElementById('plan-btn');
             if (taskData.plan_link) {
-                document.getElementById('plan-version').textContent = `Version: ${taskData.plan_version || 'Latest'}`;
-                document.getElementById('plan-download-btn').href = taskData.plan_link;
+                planBtn.href = taskData.plan_link;
             } else {
-                document.getElementById('plan-section').innerHTML = `
-                    <div class="alert alert-error">
-                        ⚠️ No plan available yet. Contact your coordinator.
-                    </div>
-                `;
+                planBtn.style.display = 'none';
             }
 
-            // Completed collectors
-            completedCollectors = taskData.collectors_completed || [];
-            renderCollectorButtons();
-            updateCompletedSection();
-
-            // Check if already completed
-            if (taskData.photo_status === 'completed') {
-                document.getElementById('complete-section').classList.add('hidden');
-                document.getElementById('final-completion').classList.remove('hidden');
-            }
+            // Render collectors
+            renderCollectors();
         }
 
         // Render collector buttons
-        function renderCollectorButtons() {
-            const container = document.getElementById('collector-buttons');
-            container.innerHTML = '';
-
+        function renderCollectors() {
+            const grid = document.getElementById('collector-grid');
+            const completed = taskData.collectors_completed || [];
+            
             for (let i = 1; i <= CONFIG.maxCollectors; i++) {
                 const btn = document.createElement('button');
                 btn.className = 'collector-btn';
                 btn.textContent = i;
-                btn.dataset.collector = i;
-
-                if (completedCollectors.includes(i.toString())) {
+                
+                if (completed.includes(i.toString())) {
                     btn.classList.add('completed');
                     btn.innerHTML = `${i} ✓`;
                 }
-
-                btn.addEventListener('click', () => selectCollector(i, btn));
-                container.appendChild(btn);
+                
+                btn.onclick = () => selectCollector(i, btn);
+                grid.appendChild(btn);
             }
         }
 
         // Select collector
         function selectCollector(num, btn) {
-            // Deselect previous
             document.querySelectorAll('.collector-btn.selected').forEach(b => {
                 if (!b.classList.contains('completed')) {
                     b.classList.remove('selected');
                 }
             });
-
-            // Select new
+            
             selectedCollector = num;
             btn.classList.add('selected');
             updateUploadButton();
         }
 
-        // File upload area handlers
-        const fileUploadArea = document.getElementById('file-upload-area');
-        const fileInput = document.getElementById('file-input');
+        // File upload handlers
+        uploadArea.onclick = () => fileInput.click();
+        
+        fileInput.onchange = (e) => {
+            selectedFiles = Array.from(e.target.files);
+            renderFileList();
+            updateUploadButton();
+        };
 
-        fileUploadArea.addEventListener('click', () => fileInput.click());
-
-        fileUploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            fileUploadArea.classList.add('drag-over');
-        });
-
-        fileUploadArea.addEventListener('dragleave', () => {
-            fileUploadArea.classList.remove('drag-over');
-        });
-
-        fileUploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            fileUploadArea.classList.remove('drag-over');
-            handleFiles(e.dataTransfer.files);
-        });
-
-        fileInput.addEventListener('change', (e) => {
-            handleFiles(e.target.files);
-        });
-
-        // Handle file selection
-        function handleFiles(files) {
-            Array.from(files).forEach(file => {
-                if (file.size > CONFIG.maxFileSize) {
-                    alert(`File ${file.name} is too large (max 10MB)`);
-                    return;
-                }
-                selectedFiles.push(file);
+        // Render file list
+        function renderFileList() {
+            const list = document.getElementById('file-list');
+            list.innerHTML = '';
+            
+            selectedFiles.forEach((file, i) => {
+                const item = document.createElement('div');
+                item.className = 'file-item';
+                item.innerHTML = `
+                    <span>${file.name}</span>
+                    <button onclick="removeFile(${i})" style="border: none; background: #ef4444; color: white; padding: 4px 12px; border-radius: 4px; cursor: pointer;">
+                        Verwijder
+                    </button>
+                `;
+                list.appendChild(item);
             });
+        }
+
+        // Remove file
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
             renderFileList();
             updateUploadButton();
         }
 
-        // Render file list
-        function renderFileList() {
-            const container = document.getElementById('file-list');
-            container.innerHTML = '';
-
-            selectedFiles.forEach((file, index) => {
-                const item = document.createElement('div');
-                item.className = 'file-item';
-                item.innerHTML = `
-                    <span class="file-item-name">📎 ${file.name}</span>
-                    <span class="file-item-size">${formatFileSize(file.size)}</span>
-                    <button class="file-remove" data-index="${index}">Remove</button>
-                `;
-                container.appendChild(item);
-            });
-
-            // Remove file handlers
-            document.querySelectorAll('.file-remove').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const index = parseInt(e.target.dataset.index);
-                    selectedFiles.splice(index, 1);
-                    renderFileList();
-                    updateUploadButton();
-                });
-            });
-        }
-
-        // Format file size
-        function formatFileSize(bytes) {
-            if (bytes < 1024) return bytes + ' B';
-            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-        }
-
-        // Update upload button state
+        // Update upload button
         function updateUploadButton() {
-            const btn = document.getElementById('upload-btn');
-            btn.disabled = !selectedCollector || selectedFiles.length === 0;
+            uploadBtn.disabled = !selectedCollector || selectedFiles.length === 0;
         }
 
-        // Upload photos
-        document.getElementById('upload-btn').addEventListener('click', async () => {
-            if (!selectedCollector || selectedFiles.length === 0) return;
-
-            const uploaderName = document.getElementById('uploader-name').value || 'Anonymous';
-            const uploadBtn = document.getElementById('upload-btn');
-            const progressSection = document.getElementById('upload-progress');
-            const progressFill = document.getElementById('progress-fill');
-            const progressText = document.getElementById('progress-text');
-            const successMsg = document.getElementById('upload-success');
-
-            // Disable button
-            uploadBtn.disabled = true;
-            progressSection.classList.remove('hidden');
-            successMsg.classList.add('hidden');
-
-            try {
-                const totalFiles = selectedFiles.length;
-                let uploadedFiles = 0;
-
-                for (const file of selectedFiles) {
-                    // Convert file to base64
-                    const base64 = await fileToBase64(file);
-
-                    // Send to n8n
-                    const response = await fetch(CONFIG.n8nUploadUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            task_token: getTaskToken(),
-                            task_id: taskData.task_id,
-                            task_name: taskData.task_name,
-                            project_id: taskData.project_id,
-                            project_name: taskData.project_name,
-                            collector_number: selectedCollector,
-                            file_name: file.name,
-                            file_content: base64,
-                            file_size: file.size,
-                            uploader: uploaderName,
-                            timestamp: new Date().toISOString()
-                        })
-                    });
-
-                    if (!response.ok) {
-                        throw new Error('Upload failed');
-                    }
-
-                    uploadedFiles++;
-                    const progress = (uploadedFiles / totalFiles) * 100;
-                    progressFill.style.width = progress + '%';
-                    progressText.textContent = `Uploading ${uploadedFiles} of ${totalFiles}...`;
-                }
-
-                // Success
-                successMsg.classList.remove('hidden');
-                progressSection.classList.add('hidden');
-
-                // Add to completed collectors
-                if (!completedCollectors.includes(selectedCollector.toString())) {
-                    completedCollectors.push(selectedCollector.toString());
-                }
-
-                // Reset
-                selectedFiles = [];
-                selectedCollector = null;
-                renderFileList();
-                renderCollectorButtons();
-                updateCompletedSection();
-                fileInput.value = '';
-
-                setTimeout(() => {
-                    successMsg.classList.add('hidden');
-                }, 3000);
-
-            } catch (error) {
-                alert('Upload failed: ' + error.message);
-                progressSection.classList.add('hidden');
-            } finally {
-                uploadBtn.disabled = false;
-            }
-        });
-
-        // Convert file to base64
-        function fileToBase64(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => {
-                    const base64 = reader.result.split(',')[1];
-                    resolve(base64);
-                };
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-            });
-        }
-
-        // Update completed section
-        function updateCompletedSection() {
-            const section = document.getElementById('completed-section');
-            const container = document.getElementById('completed-collectors');
-
-            if (completedCollectors.length === 0) {
-                section.classList.add('hidden');
-                return;
-            }
-
-            section.classList.remove('hidden');
-            container.innerHTML = '';
-
-            completedCollectors.sort((a, b) => parseInt(a) - parseInt(b)).forEach(num => {
-                const badge = document.createElement('div');
-                badge.className = 'badge';
-                badge.innerHTML = `Collector ${num} <span>✓</span>`;
-                container.appendChild(badge);
-            });
-        }
-
-        // Mark complete
-        document.getElementById('complete-btn').addEventListener('click', async () => {
-            if (!confirm('Are you sure you have uploaded all photos for all collectors?')) {
-                return;
-            }
-
-            try {
-                const response = await fetch(CONFIG.n8nCompleteUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        task_token: getTaskToken(),
-                        task_id: taskData.task_id
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error('Failed to mark as completed');
-                }
-
-                document.getElementById('complete-section').classList.add('hidden');
-                document.getElementById('final-completion').classList.remove('hidden');
-
-            } catch (error) {
-                alert('Error: ' + error.message);
-            }
-        });
+        // Upload photos (placeholder - we'll build this next)
+        uploadBtn.onclick = async () => {
+            alert(`Upload ${selectedFiles.length} foto's voor Collector ${selectedCollector}\n\n(Upload functie komt zo!)`);
+        };
 
         // Show error
         function showError(message) {
-            document.getElementById('loading').classList.add('hidden');
-            document.getElementById('error-message').textContent = message;
-            document.getElementById('error').classList.remove('hidden');
+            loadingDiv.classList.add('hidden');
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
         }
-
-        // Start
-        init();
     </script>
 </body>
 </html>
