@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Portal Debug Test</h1>
+    
+    <div id="status">Loading...</div>
+    
+    <h2>Raw Data from n8n:</h2>
+    <pre id="raw-data">Fetching...</pre>
+    
+    <h2>Parsed Data:</h2>
+    <pre id="parsed-data">-</pre>
+
+    <script>
+        // Get token from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        
+        const statusDiv = document.getElementById('status');
+        const rawDataPre = document.getElementById('raw-data');
+        const parsedDataPre = document.getElementById('parsed-data');
+
+        if (!token) {
+            statusDiv.innerHTML = '<p class="error">❌ No token in URL!</p><p>Add ?token=YOUR-TOKEN to the URL</p>';
+            rawDataPre.textContent = 'No token provided';
+        } else {
+            statusDiv.innerHTML = `<p class="success">✅ Token found: ${token}</p>`;
+            
+            // Fetch from n8n
+            const webhookUrl = `https://thermoduct.app.n8n.cloud/webhook/fetch-task?token=${token}`;
+            
+            statusDiv.innerHTML += `<p>Fetching from: ${webhookUrl}</p>`;
+            
+            fetch(webhookUrl)
+                .then(response => {
+                    statusDiv.innerHTML += `<p class="success">✅ Response received (status: ${response.status})</p>`;
+                    return response.json();
+                })
+                .then(data => {
+                    // Show raw response
+                    rawDataPre.textContent = JSON.stringify(data, null, 2);
+                    
+                    // Parse and show each field
+                    const parsed = `
+Task ID: ${data.task_id}
+Task Name: ${data.task_name}
+Project ID: ${data.project_id}
+Project Name: ${data.project_name}
+Deadline: ${data.deadline}
+Status: ${data.photo_status}
+Plan Link: ${data.plan_link}
+Plan Version: ${data.plan_version}
+                    `;
+                    parsedDataPre.textContent = parsed;
+                    
+                    statusDiv.innerHTML += '<p class="success">✅ Data loaded successfully!</p>';
+                })
+                .catch(error => {
+                    statusDiv.innerHTML += `<p class="error">❌ Error: ${error.message}</p>`;
+                    rawDataPre.textContent = `Error: ${error}`;
+                });
+        }
+    </script>
+</body>
+</html>
