@@ -92,6 +92,15 @@
       transform: scale(0.98);
     }
 
+    button.secondary {
+      background: #e2e8f0;
+      color: #1a202c;
+    }
+
+    button.secondary:hover {
+      background: #cbd5e0;
+    }
+
     .hint {
       margin-top: 10px;
       font-size: 13px;
@@ -133,7 +142,6 @@
       margin: 0;
     }
 
-    /* PDF list cards */
     .pdf-row {
       display: flex;
       align-items: center;
@@ -185,7 +193,7 @@
   </div>
 
   <script>
-    // ✅ Put your n8n base webhook here (NO trailing slash)
+    // 🔧 CHANGE THIS TO YOUR N8N WEBHOOK BASE
     const WEBHOOK_BASE = "https://thermoduct.app.n8n.cloud/webhook/c3f563b3-c04f-4b01-820d-11173ba9bd31/thermoduct";
 
     const out = document.getElementById("out");
@@ -194,8 +202,15 @@
     const btn = document.getElementById("btn");
     const pdfsEl = document.getElementById("pdfs");
 
-    // Store last response (useful for debugging)
-    window.lastTaskResponse = null;
+    function base64ToPdfBlob(base64) {
+      const clean = String(base64).replace(/\s/g, '');
+      const byteCharacters = atob(clean);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      return new Blob([new Uint8Array(byteNumbers)], { type: "application/pdf" });
+    }
 
     function downloadPdfFromBase64(base64, filename) {
       if (!base64) {
@@ -203,15 +218,7 @@
         return;
       }
 
-      // base64 is Odoo attachment "datas" (no data: prefix)
-      const byteCharacters = atob(base64);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-
-      const blob = new Blob([byteArray], { type: "application/pdf" });
+      const blob = base64ToPdfBlob(base64);
       const url = URL.createObjectURL(blob);
 
       const a = document.createElement("a");
@@ -222,6 +229,19 @@
       a.remove();
 
       URL.revokeObjectURL(url);
+    }
+
+    function viewPdfFromBase64(base64) {
+      if (!base64) {
+        alert("No PDF data found.");
+        return;
+      }
+
+      const blob = base64ToPdfBlob(base64);
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener,noreferrer");
+
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
     }
 
     function renderPdfsSafe(pdfs) {
@@ -248,12 +268,24 @@
           <div class="pdf-meta">${mimetype}</div>
         `;
 
-        const btn = document.createElement("button");
-        btn.textContent = "Download";
-        btn.addEventListener("click", () => downloadPdfFromBase64(p.data, name));
+        const right = document.createElement("div");
+        right.style.display = "flex";
+        right.style.gap = "8px";
+
+        const viewBtn = document.createElement("button");
+        viewBtn.textContent = "View";
+        viewBtn.className = "secondary";
+        viewBtn.addEventListener("click", () => viewPdfFromBase64(p.data));
+
+        const dlBtn = document.createElement("button");
+        dlBtn.textContent = "Download";
+        dlBtn.addEventListener("click", () => downloadPdfFromBase64(p.data, name));
+
+        right.appendChild(viewBtn);
+        right.appendChild(dlBtn);
 
         row.appendChild(left);
-        row.appendChild(btn);
+        row.appendChild(right);
         pdfsEl.appendChild(row);
       });
     }
@@ -269,55 +301,4 @@
 
       const url = `${WEBHOOK_BASE}/task/${encodeURIComponent(id)}`;
       statusEl.textContent = `Fetching task ${id}…`;
-      out.textContent = "—";
-      renderPdfsSafe([]);
-
-      try {
-        const res = await fetch(url, {
-          method: "GET",
-          headers: { "Accept": "application/json" },
-          cache: "no-store",
-        });
-
-        const contentType = res.headers.get("content-type") || "unknown";
-        const text = await res.text();
-
-        if (!text || text.trim().length === 0) {
-          statusEl.innerHTML = `<span class="error">HTTP ${res.status}</span> (empty body, ${contentType})`;
-          out.textContent = "No content returned from webhook.";
-          renderPdfsSafe([]);
-          return;
-        }
-
-        let data = text;
-        try { data = JSON.parse(text); } catch {}
-
-        if (!res.ok) {
-          statusEl.innerHTML = `<span class="error">HTTP ${res.status}</span> ${res.statusText}`;
-          out.textContent = typeof data === "string" ? data : JSON.stringify(data, null, 2);
-          renderPdfsSafe([]);
-          return;
-        }
-
-        // Success
-        statusEl.textContent = `Success ✅ (HTTP ${res.status})`;
-        window.lastTaskResponse = data;
-
-        // Render PDFs + raw JSON
-        renderPdfsSafe((data && data.pdfs) ? data.pdfs : []);
-        out.textContent = typeof data === "string" ? data : JSON.stringify(data, null, 2);
-
-      } catch (err) {
-        statusEl.innerHTML = `<span class="error">Network error</span>`;
-        out.textContent = err.message;
-        renderPdfsSafe([]);
-      }
-    }
-
-    btn.addEventListener("click", fetchTask);
-    taskIdInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") fetchTask();
-    });
-  </script>
-</body>
-</html>
+      out.textCont
