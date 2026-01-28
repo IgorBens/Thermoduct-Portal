@@ -1,0 +1,541 @@
+/**
+ * Thermoduct Portal - Main Styles
+ */
+
+/* Reset & Base */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    font-family: var(--font-family);
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-normal);
+    color: var(--color-gray-900);
+    background-color: var(--color-gray-100);
+    min-height: 100vh;
+}
+
+/* ==========================================
+   Loading States
+   ========================================== */
+
+.loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-8);
+    gap: var(--spacing-4);
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--color-gray-200);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-inline {
+    color: var(--color-gray-500);
+    font-size: var(--font-size-sm);
+}
+
+/* ==========================================
+   Login Screen
+   ========================================== */
+
+.login-screen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: var(--spacing-4);
+    background: linear-gradient(135deg, var(--color-secondary) 0%, var(--color-secondary-light) 100%);
+}
+
+.login-card {
+    background: var(--color-white);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-8);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+    box-shadow: var(--shadow-xl);
+}
+
+.login-card .logo {
+    width: 120px;
+    height: auto;
+    margin-bottom: var(--spacing-6);
+}
+
+.login-card h1 {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+    margin-bottom: var(--spacing-2);
+    color: var(--color-secondary);
+}
+
+.login-card p {
+    color: var(--color-gray-600);
+    margin-bottom: var(--spacing-6);
+}
+
+.login-card form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-4);
+}
+
+.login-card input {
+    padding: var(--spacing-4);
+    border: 2px solid var(--color-gray-200);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-base);
+    transition: border-color var(--transition-fast);
+}
+
+.login-card input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.login-card button {
+    padding: var(--spacing-4);
+    background: var(--color-primary);
+    color: var(--color-white);
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    transition: background var(--transition-fast);
+}
+
+.login-card button:hover {
+    background: var(--color-primary-dark);
+}
+
+.login-card .hint {
+    font-size: var(--font-size-sm);
+    color: var(--color-gray-500);
+    margin-top: var(--spacing-4);
+}
+
+/* ==========================================
+   Header
+   ========================================== */
+
+.header {
+    background: var(--color-white);
+    padding: var(--spacing-4) var(--spacing-4);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: var(--shadow-sm);
+    position: sticky;
+    top: 0;
+    z-index: var(--z-dropdown);
+}
+
+.header h1 {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-secondary);
+}
+
+.header .back-btn {
+    color: var(--color-primary);
+    text-decoration: none;
+    font-weight: var(--font-weight-medium);
+}
+
+.refresh-btn {
+    padding: var(--spacing-2) var(--spacing-4);
+    background: var(--color-gray-100);
+    border: 1px solid var(--color-gray-300);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.refresh-btn:hover {
+    background: var(--color-gray-200);
+}
+
+/* ==========================================
+   Dashboard / Tasks
+   ========================================== */
+
+.dashboard {
+    min-height: 100vh;
+}
+
+.tasks-container {
+    padding: var(--spacing-4);
+}
+
+.date-group {
+    margin-bottom: var(--spacing-6);
+}
+
+.date-group.today .date-header {
+    color: var(--color-primary);
+}
+
+.date-header {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-secondary);
+    margin-bottom: var(--spacing-3);
+    padding-bottom: var(--spacing-2);
+    border-bottom: 2px solid var(--color-gray-200);
+}
+
+.tasks-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-3);
+}
+
+/* Task Card */
+.task-card {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-4);
+    box-shadow: var(--shadow-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    border-left: 4px solid var(--color-primary);
+}
+
+.task-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.task-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-2);
+}
+
+.task-header h3 {
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-gray-900);
+}
+
+.pdf-badge {
+    background: var(--color-info);
+    color: var(--color-white);
+    font-size: var(--font-size-xs);
+    padding: var(--spacing-1) var(--spacing-2);
+    border-radius: var(--radius-sm);
+    font-weight: var(--font-weight-medium);
+}
+
+.task-info {
+    margin-bottom: var(--spacing-3);
+}
+
+.task-info .address {
+    color: var(--color-gray-600);
+    font-size: var(--font-size-sm);
+}
+
+.task-info .time {
+    color: var(--color-gray-500);
+    font-size: var(--font-size-sm);
+}
+
+/* Progress Bar */
+.progress-bar {
+    height: 8px;
+    background: var(--color-gray-200);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    margin-bottom: var(--spacing-1);
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--color-success);
+    border-radius: var(--radius-full);
+    transition: width var(--transition-normal);
+}
+
+.progress-text {
+    font-size: var(--font-size-xs);
+    color: var(--color-gray-500);
+    text-align: right;
+}
+
+/* ==========================================
+   Task Detail
+   ========================================== */
+
+.task-detail {
+    min-height: 100vh;
+}
+
+.task-container {
+    padding: var(--spacing-4);
+}
+
+.task-info-full {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-4);
+    margin-bottom: var(--spacing-4);
+    box-shadow: var(--shadow-md);
+}
+
+.task-info-full h2 {
+    font-size: var(--font-size-xl);
+    margin-bottom: var(--spacing-2);
+}
+
+.task-info-full .address {
+    color: var(--color-gray-600);
+    margin-bottom: var(--spacing-4);
+}
+
+.task-meta {
+    padding: var(--spacing-3);
+    background: var(--color-gray-50);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-4);
+}
+
+.task-meta p {
+    font-size: var(--font-size-sm);
+}
+
+/* PDF Section */
+.pdf-section {
+    margin-bottom: var(--spacing-6);
+}
+
+.pdf-section h3 {
+    font-size: var(--font-size-lg);
+    margin-bottom: var(--spacing-3);
+}
+
+.pdf-download {
+    display: block;
+    padding: var(--spacing-3);
+    background: var(--color-gray-50);
+    border-radius: var(--radius-md);
+    color: var(--color-primary);
+    text-decoration: none;
+    margin-bottom: var(--spacing-2);
+    transition: background var(--transition-fast);
+}
+
+.pdf-download:hover {
+    background: var(--color-gray-100);
+}
+
+/* ==========================================
+   Collector Forms
+   ========================================== */
+
+.collectors-section h3 {
+    font-size: var(--font-size-lg);
+    margin-bottom: var(--spacing-4);
+}
+
+.collector-form {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-4);
+    margin-bottom: var(--spacing-4);
+    box-shadow: var(--shadow-md);
+    border-left: 4px solid var(--color-gray-300);
+}
+
+.collector-form.completed {
+    border-left-color: var(--color-success);
+    background: var(--color-gray-50);
+}
+
+.collector-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-4);
+}
+
+.collector-header h4 {
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+}
+
+.status-badge {
+    background: var(--color-success);
+    color: var(--color-white);
+    font-size: var(--font-size-xs);
+    padding: var(--spacing-1) var(--spacing-2);
+    border-radius: var(--radius-sm);
+}
+
+.form-group {
+    margin-bottom: var(--spacing-4);
+}
+
+.form-group label {
+    display: block;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-gray-700);
+    margin-bottom: var(--spacing-2);
+}
+
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: var(--spacing-3);
+    border: 1px solid var(--color-gray-300);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-base);
+    font-family: inherit;
+}
+
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.form-group textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+/* Photo Upload */
+.photo-upload {
+    padding: var(--spacing-4);
+    border: 2px dashed var(--color-gray-300);
+    border-radius: var(--radius-md);
+    text-align: center;
+}
+
+.photo-upload input[type="file"] {
+    width: 100%;
+}
+
+.upload-done {
+    color: var(--color-success);
+    font-weight: var(--font-weight-medium);
+}
+
+.uploading {
+    color: var(--color-gray-500);
+}
+
+.upload-error {
+    color: var(--color-error);
+}
+
+/* Complete Button */
+.complete-btn {
+    width: 100%;
+    padding: var(--spacing-4);
+    background: var(--color-success);
+    color: var(--color-white);
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    transition: background var(--transition-fast);
+}
+
+.complete-btn:hover {
+    background: var(--color-success-light);
+}
+
+/* ==========================================
+   Empty & Error States
+   ========================================== */
+
+.empty-state,
+.error-state {
+    text-align: center;
+    padding: var(--spacing-8);
+    color: var(--color-gray-600);
+}
+
+.empty-state .hint {
+    font-size: var(--font-size-sm);
+    color: var(--color-gray-400);
+    margin-top: var(--spacing-2);
+}
+
+.error-state button {
+    margin-top: var(--spacing-4);
+    padding: var(--spacing-3) var(--spacing-6);
+    background: var(--color-primary);
+    color: var(--color-white);
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+}
+
+/* ==========================================
+   Utility Classes
+   ========================================== */
+
+.btn {
+    display: inline-block;
+    padding: var(--spacing-3) var(--spacing-6);
+    background: var(--color-primary);
+    color: var(--color-white);
+    text-decoration: none;
+    border-radius: var(--radius-md);
+    font-weight: var(--font-weight-medium);
+    transition: background var(--transition-fast);
+}
+
+.btn:hover {
+    background: var(--color-primary-dark);
+}
+
+/* ==========================================
+   Mobile Responsiveness
+   ========================================== */
+
+@media (max-width: 480px) {
+    .login-card {
+        padding: var(--spacing-6);
+    }
+
+    .header {
+        padding: var(--spacing-3);
+    }
+
+    .header h1 {
+        font-size: var(--font-size-lg);
+    }
+
+    .task-card {
+        padding: var(--spacing-3);
+    }
+}
