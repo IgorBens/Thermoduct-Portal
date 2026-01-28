@@ -119,7 +119,7 @@
       margin: 0;
     }
 
-    .pdf-row {
+    .pdf-row, .task-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -131,11 +131,11 @@
       background: #fff;
     }
 
-    .pdf-name {
-      font-weight: 600;
+    .pdf-name, .task-title {
+      font-weight: 700;
     }
 
-    .pdf-meta {
+    .pdf-meta, .task-meta {
       font-size: 12px;
       color: var(--muted);
       margin-top: 2px;
@@ -159,16 +159,14 @@
     <div class="hint" id="loginStatus">Not logged in.</div>
   </div>
 
-  <!-- TASK LOOKUP -->
+  <!-- TASK LOOKUP + MY TASKS -->
   <div class="card">
     <div class="row">
       <input id="taskId" type="number" placeholder="Task ID (e.g. 3369)" />
       <button id="btn">Fetch task</button>
     </div>
 
-    <div class="hint">
-      Calls secured n8n webhook
-    </div>
+    <div class="hint">Calls secured n8n webhook</div>
 
     <div class="output">
       <div id="status" class="status">Waiting for input…</div>
@@ -178,14 +176,23 @@
 
       <div class="section-title">Raw JSON</div>
       <pre id="out">—</pre>
+
+      <!-- MY TASKS -->
+      <div class="section-title" style="margin-top:16px;">My tasks</div>
+      <div class="row" style="margin-bottom:8px;">
+        <button id="myTasksBtn" class="secondary">Load my tasks</button>
+      </div>
+      <div id="myTasksStatus" class="hint">—</div>
+      <div id="myTasksList"></div>
     </div>
   </div>
 </div>
 
 <script>
-  // 🔧 CHANGE THIS TO YOUR TASK WEBHOOK BASE
+  // 🔧 Your task webhook base (NO /task/... here)
   const WEBHOOK_BASE = "https://thermoduct.app.n8n.cloud/webhook/c3f563b3-c04f-4b01-820d-11173ba9bd31/thermoduct";
 
+  // 🔧 Your auth/login webhook (POST {username,password} -> {ok:true, installer_id, ...})
   const AUTH_WEBHOOK = "https://thermoduct.app.n8n.cloud/webhook/auth/login";
 
   const out = document.getElementById("out");
@@ -199,6 +206,10 @@
   const loginBtn = document.getElementById("loginBtn");
   const logoutBtn = document.getElementById("logoutBtn");
   const loginStatus = document.getElementById("loginStatus");
+
+  const myTasksBtn = document.getElementById("myTasksBtn");
+  const myTasksStatus = document.getElementById("myTasksStatus");
+  const myTasksList = document.getElementById("myTasksList");
 
   // ===== AUTH STORAGE =====
   function setCreds(u, p) {
@@ -214,6 +225,7 @@
   function clearCreds() {
     sessionStorage.removeItem("u");
     sessionStorage.removeItem("p");
+    sessionStorage.removeItem("installer_id");
   }
   function basicAuthHeader(u, p) {
     return "Basic " + btoa(`${u}:${p}`);
@@ -256,20 +268,31 @@
     }
 
     setCreds(username, password);
+
+    // store installer_id if your auth webhook returns it
+    if (data.installer_id !== undefined && data.installer_id !== null) {
+      sessionStorage.setItem("installer_id", String(data.installer_id));
+    }
+
     refreshLoginUI();
+
+    // optional: auto-load tasks after login
+    // fetchMyTasks();
   }
 
   loginBtn.addEventListener("click", doLogin);
   logoutBtn.addEventListener("click", () => {
     clearCreds();
     refreshLoginUI();
+    myTasksList.innerHTML = "";
+    myTasksStatus.textContent = "—";
   });
 
   refreshLoginUI();
 
   // ===== PDF HELPERS =====
   function base64ToPdfBlob(base64) {
-    const clean = String(base64).replace(/\s/g, '');
+    const clean = String(base64 || "").replace(/\s/g, "");
     const byteCharacters = atob(clean);
     const byteNumbers = new Array(byteCharacters.length);
     for (let i = 0; i < byteCharacters.length; i++) {
@@ -345,7 +368,7 @@
     });
   }
 
-  // ===== TASK FETCH =====
+  // ===== TASK FETCH (by ID) =====
   async function fetchTask() {
     const id = String(taskIdInput.value || "").trim();
     if (!id) {
@@ -395,7 +418,7 @@
 
     } catch (err) {
       statusEl.innerHTML = `<span class="error">Network error</span>`;
-      out.textContent = err.message;
+      out.textContent = err.message || String(err);
     }
   }
 
@@ -403,6 +426,95 @@
   taskIdInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") fetchTask();
   });
+
+  // ===== MY TASKS =====
+  function renderMyTasks(tasks) {
+    myTasksList.innerHTML = "";
+
+    if (!tasks || tasks.length === 0) {
+      myTasksStatus.textContent = "No tasks found for you.";
+      return;
+    }
+
+    myTasksStatus.textContent = `Found ${tasks.length} task(s).`;
+
+    tasks.forEach((t) => {
+      const row = document.createElement("div");
+      row.className = "task-row";
+
+      const left = document.createElement("div");
+      left.innerHTML = `
+        <div class="task-title">#${t.id} — ${t.name || "Task"}</div>
+        <div class="task-meta">
+          ${t.date || ""}
+          ${t.project ? " • " + t.project : ""}
+          ${t.address ? " • " + t.address : ""}
+        </div>
+      `;
+
+      const right = document.createElement("div");
+      right.style.display = "flex";
+      right.style.gap = "8px";
+
+      const openBtn = document.createElement("button");
+      openBtn.textContent = "Open";
+      openBtn.className = "secondary";
+      openBtn.addEventListener("click", async () => {
+        taskIdInput.value = t.id;
+        await fetchTask();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+
+      right.appendChild(openBtn);
+
+      row.appendChild(left);
+      row.appendChild(right);
+      myTasksList.appendChild(row);
+    });
+  }
+
+  async function fetchMyTasks() {
+    const {u, p} = getCreds();
+    if (!u || !p) {
+      myTasksStatus.textContent = "Please login first.";
+      return;
+    }
+
+    // This expects you to create a NEW n8n webhook:  GET  thermoduct/tasks
+    const url = `${WEBHOOK_BASE}/tasks`;
+
+    myTasksStatus.textContent = "Loading your tasks…";
+    myTasksList.innerHTML = "";
+
+    try {
+      const res = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Accept": "application/json",
+          "Authorization": basicAuthHeader(u, p),
+        },
+        cache: "no-store",
+      });
+
+      const text = await res.text();
+      let data = [];
+      try { data = JSON.parse(text); } catch {}
+
+      if (!res.ok) {
+        myTasksStatus.innerHTML = `<span class="error">HTTP ${res.status}</span>`;
+        return;
+      }
+
+      // allow either array or {data:[...]}
+      const tasks = Array.isArray(data) ? data : (Array.isArray(data.data) ? data.data : []);
+      renderMyTasks(tasks);
+
+    } catch (err) {
+      myTasksStatus.innerHTML = `<span class="error">Network error</span>`;
+    }
+  }
+
+  myTasksBtn.addEventListener("click", fetchMyTasks);
 </script>
 </body>
 </html>
