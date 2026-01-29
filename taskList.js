@@ -16,14 +16,18 @@ function getTaskDate(t) {
 
 // Populate date dropdown with unique dates
 function populateDateFilter(tasks) {
+  console.log("[taskList] populateDateFilter called with", tasks.length, "tasks");
+
   const dates = new Set();
-  tasks.forEach(t => {
+  tasks.forEach((t, i) => {
     const d = getTaskDate(t);
+    if (i < 3) console.log("[taskList] Task", i, "date:", d, "raw:", t.date, t.planned_date_begin);
     if (d) dates.add(d);
   });
 
   // Sort dates
   const sortedDates = Array.from(dates).sort();
+  console.log("[taskList] Found unique dates:", sortedDates.length, sortedDates.slice(0, 5));
 
   // Reset dropdown
   dateFilterEl.innerHTML = '<option value="">All dates</option>';
@@ -31,18 +35,12 @@ function populateDateFilter(tasks) {
   sortedDates.forEach(d => {
     const opt = document.createElement("option");
     opt.value = d;
-    // Format nicely for display
-    const dateObj = new Date(d);
-    opt.textContent = dateObj.toLocaleDateString("nl-BE", {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-      year: "numeric"
-    });
+    // Show date in YYYY-MM-DD format for clarity
+    opt.textContent = d;
     dateFilterEl.appendChild(opt);
   });
 
-  console.log("[taskList] Date filter populated with", sortedDates.length, "dates");
+  console.log("[taskList] Dropdown now has", dateFilterEl.options.length, "options");
 }
 
 // Filter and render tasks
