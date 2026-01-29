@@ -4,6 +4,19 @@
 // Store all tasks globally for filtering
 let allTasks = [];
 const dateFilterEl = document.getElementById("dateFilter");
+const showPastDatesEl = document.getElementById("showPastDates");
+
+// Get today's date string (YYYY-MM-DD)
+function getTodayString() {
+  const today = new Date();
+  return today.toISOString().split('T')[0];
+}
+
+// Check if a date is in the past (before today)
+function isDateInPast(dateStr) {
+  const today = getTodayString();
+  return dateStr < today;
+}
 
 // Extract date string (YYYY-MM-DD) from task
 function getTaskDate(t) {
@@ -46,13 +59,21 @@ function formatDateLabel(dateStr) {
 
 // Populate date dropdown with unique dates
 function populateDateFilter(tasks) {
+  const showPast = showPastDatesEl.checked;
+  const todayStr = getTodayString();
+
   const dates = new Set();
   tasks.forEach(t => {
     const d = getTaskDate(t);
-    if (d) dates.add(d);
+    if (d) {
+      // Include date if: showing past OR date is today or future
+      if (showPast || d >= todayStr) {
+        dates.add(d);
+      }
+    }
   });
 
-  // Sort dates
+  // Sort dates chronologically
   const sortedDates = Array.from(dates).sort();
 
   // Reset dropdown
@@ -69,24 +90,30 @@ function populateDateFilter(tasks) {
 // Filter and render tasks
 function filterAndRenderTasks() {
   const selectedDate = dateFilterEl.value;
-  console.log("[taskList] Filtering by date:", selectedDate || "(all)");
+  const showPast = showPastDatesEl.checked;
+  const todayStr = getTodayString();
 
   let filtered = allTasks;
+
   if (selectedDate) {
+    // Filter by specific date
     filtered = allTasks.filter(t => getTaskDate(t) === selectedDate);
+  } else if (!showPast) {
+    // Filter out past dates when "Alle datums" is selected and showPast is unchecked
+    filtered = allTasks.filter(t => {
+      const d = getTaskDate(t);
+      return d >= todayStr;
+    });
   }
 
   renderMyTasks(filtered);
 }
 
 function renderMyTasks(tasks) {
-  console.log("[taskList] renderMyTasks called with:", tasks.length, "tasks");
-
   myTasksList.innerHTML = "";
 
   if (!tasks || tasks.length === 0) {
-    console.log("[taskList] No tasks to render");
-    myTasksStatus.textContent = "No tasks found.";
+    myTasksStatus.textContent = "Geen taken gevonden.";
     return;
   }
 
@@ -97,9 +124,9 @@ function renderMyTasks(tasks) {
     return dateA.localeCompare(dateB);
   });
 
-  myTasksStatus.textContent = `Showing ${tasks.length} task(s).`;
+  myTasksStatus.textContent = `${tasks.length} ta${tasks.length === 1 ? 'ak' : 'ken'} gevonden.`;
 
-  tasks.forEach((t, index) => {
+  tasks.forEach((t) => {
     // Extract fields from API format
     const taskName = t.display_name || t.name || "Task";
     const projectName = Array.isArray(t.project_id) ? t.project_id[1] : (t.project || "");
@@ -109,13 +136,7 @@ function renderMyTasks(tasks) {
     const dateStr = getTaskDate(t);
     let plannedDate = "";
     if (dateStr) {
-      const d = new Date(dateStr);
-      plannedDate = d.toLocaleDateString("nl-BE", {
-        weekday: "short",
-        day: "numeric",
-        month: "short",
-        year: "numeric"
-      });
+      plannedDate = formatDateLabel(dateStr);
     }
 
     const row = document.createElement("div");
@@ -153,18 +174,15 @@ function renderMyTasks(tasks) {
 }
 
 async function fetchMyTasks() {
-  console.log("[taskList] fetchMyTasks called");
-
   const {u, p} = getCreds();
   if (!u || !p) {
-    myTasksStatus.textContent = "Please login first.";
+    myTasksStatus.textContent = "Log eerst in.";
     return;
   }
 
   const url = `${WEBHOOK_BASE}/tasks`;
-  console.log("[taskList] Fetching from URL:", url);
 
-  myTasksStatus.textContent = "Loading your tasks…";
+  myTasksStatus.textContent = "Taken laden…";
   myTasksList.innerHTML = "";
 
   try {
@@ -177,10 +195,7 @@ async function fetchMyTasks() {
       cache: "no-store",
     });
 
-    console.log("[taskList] Response status:", res.status);
-
     const text = await res.text();
-    console.log("[taskList] Raw response length:", text.length);
 
     let data = [];
     try {
@@ -206,20 +221,24 @@ async function fetchMyTasks() {
       tasks = [];
     }
 
-    console.log("[taskList] Loaded", tasks.length, "tasks");
-
     // Store globally and populate filter
     allTasks = tasks;
     populateDateFilter(tasks);
 
-    // Render all tasks initially
-    renderMyTasks(tasks);
+    // Render tasks (filtered by default - no past dates)
+    filterAndRenderTasks();
 
   } catch (err) {
     console.error("[taskList] Network error:", err);
-    myTasksStatus.innerHTML = `<span class="error">Network error</span>`;
+    myTasksStatus.innerHTML = `<span class="error">Netwerkfout</span>`;
   }
 }
 
 // Listen for date filter changes
 dateFilterEl.addEventListener("change", filterAndRenderTasks);
+
+// Listen for checkbox changes - repopulate dropdown and refilter
+showPastDatesEl.addEventListener("change", () => {
+  populateDateFilter(allTasks);
+  filterAndRenderTasks();
+});

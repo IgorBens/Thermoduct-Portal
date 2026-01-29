@@ -43,11 +43,14 @@
 
       <!-- MY TASKS -->
       <div class="section-title" style="margin-top:16px;">My tasks</div>
-      <div class="row" style="margin-bottom:8px;">
+      <div class="row" style="margin-bottom:8px; flex-wrap:wrap; gap:8px;">
         <button id="myTasksBtn" class="secondary">Load my tasks</button>
-        <select id="dateFilter" style="margin-left:8px;">
-          <option value="">All dates</option>
+        <select id="dateFilter">
+          <option value="">Alle datums</option>
         </select>
+        <label style="display:flex; align-items:center; gap:4px; font-size:14px;">
+          <input type="checkbox" id="showPastDates"> Toon verleden
+        </label>
       </div>
       <div id="myTasksStatus" class="hint">—</div>
       <div id="myTasksList"></div>
