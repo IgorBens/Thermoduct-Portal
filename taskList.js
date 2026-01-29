@@ -14,33 +14,56 @@ function getTaskDate(t) {
   return "";
 }
 
+// Format date for dropdown display
+function formatDateLabel(dateStr) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  // Parse the date string (YYYY-MM-DD)
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+
+  if (date.getTime() === yesterday.getTime()) {
+    return "Gisteren";
+  } else if (date.getTime() === today.getTime()) {
+    return "Vandaag";
+  } else if (date.getTime() === tomorrow.getTime()) {
+    return "Morgen";
+  } else {
+    return date.toLocaleDateString("nl-BE", {
+      weekday: "short",
+      day: "numeric",
+      month: "short"
+    });
+  }
+}
+
 // Populate date dropdown with unique dates
 function populateDateFilter(tasks) {
-  console.log("[taskList] populateDateFilter called with", tasks.length, "tasks");
-
   const dates = new Set();
-  tasks.forEach((t, i) => {
+  tasks.forEach(t => {
     const d = getTaskDate(t);
-    if (i < 3) console.log("[taskList] Task", i, "date:", d, "raw:", t.date, t.planned_date_begin);
     if (d) dates.add(d);
   });
 
   // Sort dates
   const sortedDates = Array.from(dates).sort();
-  console.log("[taskList] Found unique dates:", sortedDates.length, sortedDates.slice(0, 5));
 
   // Reset dropdown
-  dateFilterEl.innerHTML = '<option value="">All dates</option>';
+  dateFilterEl.innerHTML = '<option value="">Alle datums</option>';
 
   sortedDates.forEach(d => {
     const opt = document.createElement("option");
     opt.value = d;
-    // Show date in YYYY-MM-DD format for clarity
-    opt.textContent = d;
+    opt.textContent = formatDateLabel(d);
     dateFilterEl.appendChild(opt);
   });
-
-  console.log("[taskList] Dropdown now has", dateFilterEl.options.length, "options");
 }
 
 // Filter and render tasks
