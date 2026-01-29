@@ -12,21 +12,48 @@ function renderMyTasks(tasks) {
     return;
   }
 
+  // Sort by planned_date_begin (earliest first)
+  tasks.sort((a, b) => {
+    const dateA = a.planned_date_begin || "";
+    const dateB = b.planned_date_begin || "";
+    return dateA.localeCompare(dateB);
+  });
+  console.log("[taskList] Tasks sorted by planned_date_begin");
+
   myTasksStatus.textContent = `Found ${tasks.length} task(s).`;
 
   tasks.forEach((t, index) => {
     console.log(`[taskList] Rendering task ${index}:`, t);
+
+    // Extract fields from API format
+    const taskName = t.display_name || t.name || "Task";
+    const projectName = Array.isArray(t.project_id) ? t.project_id[1] : (t.project || "");
+    const address = Array.isArray(t.x_studio_afleveradres) ? t.x_studio_afleveradres[1] : (t.address || "");
+
+    // Format planned date nicely
+    let plannedDate = "";
+    if (t.planned_date_begin) {
+      const d = new Date(t.planned_date_begin);
+      plannedDate = d.toLocaleDateString("nl-BE", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        year: "numeric"
+      });
+    } else if (t.date) {
+      plannedDate = t.date;
+    }
 
     const row = document.createElement("div");
     row.className = "task-row";
 
     const left = document.createElement("div");
     left.innerHTML = `
-      <div class="task-title">#${t.id} — ${t.name || "Task"}</div>
+      <div class="task-title">#${t.id} — ${taskName}</div>
       <div class="task-meta">
-        ${t.date || ""}
-        ${t.project ? " • " + t.project : ""}
-        ${t.address ? " • " + t.address : ""}
+        ${plannedDate ? `<strong>📅 ${plannedDate}</strong>` : ""}
+        ${projectName ? ` • ${projectName}` : ""}
+        ${address ? ` • 📍 ${address}` : ""}
       </div>
     `;
 
