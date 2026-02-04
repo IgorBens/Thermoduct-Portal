@@ -65,25 +65,18 @@ function populateDateFilter(tasks) {
   const showPast = showPastDatesEl.checked;
   const todayStr = getTodayString();
 
-  console.log("[taskList] Today is:", todayStr, "showPast:", showPast);
-
   const dates = new Set();
   tasks.forEach(t => {
     const d = getTaskDate(t);
     if (d) {
-      // Include date if: showing past OR date is today or future
       if (showPast || d >= todayStr) {
         dates.add(d);
       }
     }
   });
 
-  console.log("[taskList] Filtered dates:", Array.from(dates).slice(0, 5));
-
-  // Sort dates chronologically
   const sortedDates = Array.from(dates).sort();
 
-  // Reset dropdown
   dateFilterEl.innerHTML = '<option value="">Alle datums</option>';
 
   sortedDates.forEach(d => {
@@ -103,10 +96,8 @@ function filterAndRenderTasks() {
   let filtered = allTasks;
 
   if (selectedDate) {
-    // Filter by specific date
     filtered = allTasks.filter(t => getTaskDate(t) === selectedDate);
   } else if (!showPast) {
-    // Filter out past dates when "Alle datums" is selected and showPast is unchecked
     filtered = allTasks.filter(t => {
       const d = getTaskDate(t);
       return d >= todayStr;
@@ -114,6 +105,13 @@ function filterAndRenderTasks() {
   }
 
   renderMyTasks(filtered);
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
 }
 
 function renderMyTasks(tasks) {
@@ -134,12 +132,14 @@ function renderMyTasks(tasks) {
   myTasksStatus.textContent = `${tasks.length} ta${tasks.length === 1 ? 'ak' : 'ken'} gevonden.`;
 
   tasks.forEach((t) => {
-    // Extract fields from API format
-    const taskName = t.display_name || t.name || "Task";
-    const projectName = Array.isArray(t.project_id) ? t.project_id[1] : (t.project || "");
-    const address = Array.isArray(t.x_studio_afleveradres) ? t.x_studio_afleveradres[1] : (t.address || "");
+    const taskName = t.name || t.display_name || "Task";
+    const projectName = t.project_name || "";
+    const orderNumber = t.order_number || "";
+    const addressName = t.address_name || (Array.isArray(t.x_studio_afleveradres) ? t.x_studio_afleveradres[1] : (t.address || ""));
+    const addressFull = t.address_full || "";
+    const projectLeader = t.project_leader || "";
 
-    // Format date nicely
+    // Format date
     const dateStr = getTaskDate(t);
     let plannedDate = "";
     if (dateStr) {
@@ -147,21 +147,85 @@ function renderMyTasks(tasks) {
     }
 
     const row = document.createElement("div");
-    row.className = "task-row";
+    row.className = "task-card";
 
-    const left = document.createElement("div");
-    left.innerHTML = `
-      <div class="task-title">#${t.id} — ${taskName}</div>
-      <div class="task-meta">
-        ${plannedDate ? `<strong>📅 ${plannedDate}</strong>` : ""}
-        ${projectName ? ` • ${projectName}` : ""}
-        ${address ? ` • 📍 ${address}` : ""}
-      </div>
-    `;
+    // Header: project name + date badge
+    const header = document.createElement("div");
+    header.className = "task-card-header";
 
-    const right = document.createElement("div");
-    right.style.display = "flex";
-    right.style.gap = "8px";
+    const titleSection = document.createElement("div");
+    titleSection.className = "task-card-title-section";
+
+    if (projectName) {
+      const projEl = document.createElement("div");
+      projEl.className = "task-card-project";
+      projEl.textContent = projectName;
+      titleSection.appendChild(projEl);
+    }
+
+    const nameEl = document.createElement("div");
+    nameEl.className = "task-card-name";
+    nameEl.textContent = taskName;
+    if (orderNumber) {
+      nameEl.textContent += ` \u2022 S${orderNumber}`;
+    }
+    titleSection.appendChild(nameEl);
+
+    header.appendChild(titleSection);
+
+    if (plannedDate) {
+      const badge = document.createElement("span");
+      badge.className = "task-card-date";
+      if (dateStr === getTodayString()) {
+        badge.classList.add("today");
+      } else if (isDateInPast(dateStr)) {
+        badge.classList.add("past");
+      }
+      badge.textContent = plannedDate;
+      header.appendChild(badge);
+    }
+
+    row.appendChild(header);
+
+    // Details row: address + project leader
+    const details = document.createElement("div");
+    details.className = "task-card-details";
+
+    if (addressName || addressFull) {
+      const addrEl = document.createElement("div");
+      addrEl.className = "task-card-detail";
+      addrEl.innerHTML = `<span class="detail-icon">&#128205;</span>`;
+      const addrText = document.createElement("span");
+      if (addressName) {
+        const nameSpan = document.createElement("strong");
+        nameSpan.textContent = addressName;
+        addrText.appendChild(nameSpan);
+      }
+      if (addressFull) {
+        if (addressName) {
+          addrText.appendChild(document.createElement("br"));
+        }
+        const fullSpan = document.createTextNode(addressFull);
+        addrText.appendChild(fullSpan);
+      }
+      addrEl.appendChild(addrText);
+      details.appendChild(addrEl);
+    }
+
+    if (projectLeader) {
+      const leaderEl = document.createElement("div");
+      leaderEl.className = "task-card-detail";
+      leaderEl.innerHTML = `<span class="detail-icon">&#128100;</span><span>${escapeHtml(projectLeader)}</span>`;
+      details.appendChild(leaderEl);
+    }
+
+    if (details.children.length > 0) {
+      row.appendChild(details);
+    }
+
+    // Footer: open button
+    const footer = document.createElement("div");
+    footer.className = "task-card-footer";
 
     const openBtn = document.createElement("button");
     openBtn.textContent = "Open";
@@ -172,10 +236,9 @@ function renderMyTasks(tasks) {
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
 
-    right.appendChild(openBtn);
+    footer.appendChild(openBtn);
+    row.appendChild(footer);
 
-    row.appendChild(left);
-    row.appendChild(right);
     myTasksList.appendChild(row);
   });
 }
@@ -189,7 +252,7 @@ async function fetchMyTasks() {
 
   const url = `${WEBHOOK_BASE}/tasks`;
 
-  myTasksStatus.textContent = "Taken laden…";
+  myTasksStatus.textContent = "Taken laden\u2026";
   myTasksList.innerHTML = "";
 
   try {
