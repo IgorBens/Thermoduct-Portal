@@ -167,7 +167,7 @@ function renderMyTasks(tasks) {
     nameEl.className = "task-card-name";
     nameEl.textContent = taskName;
     if (orderNumber) {
-      nameEl.textContent += ` \u2022 S${orderNumber}`;
+      nameEl.textContent += ` \u2022 ${orderNumber}`;
     }
     titleSection.appendChild(nameEl);
 
