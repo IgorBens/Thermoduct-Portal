@@ -7,6 +7,9 @@
   --muted: #718096;
   --radius: 12px;
   --shadow: 0 10px 25px rgba(0,0,0,0.08);
+  --accent: #2b6cb0;
+  --success: #276749;
+  --warning: #c05621;
 }
 
 * { box-sizing: border-box; }
@@ -32,6 +35,7 @@ h1 {
   color: var(--primary);
 }
 
+/* ===== CARD ===== */
 .card {
   background: var(--card);
   border-radius: var(--radius);
@@ -41,6 +45,7 @@ h1 {
   margin-bottom: 16px;
 }
 
+/* ===== FORM ELEMENTS ===== */
 .row {
   display: flex;
   gap: 10px;
@@ -74,6 +79,15 @@ button.secondary {
   color: #1a202c;
 }
 
+select {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  font-size: 14px;
+  background: white;
+}
+
+/* ===== UTILITY ===== */
 .hint {
   margin-top: 8px;
   font-size: 13px;
@@ -111,7 +125,8 @@ pre {
   margin: 0;
 }
 
-.pdf-row, .task-row {
+/* ===== PDF ROW ===== */
+.pdf-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -123,12 +138,201 @@ pre {
   background: #fff;
 }
 
-.pdf-name, .task-title {
+.pdf-name {
   font-weight: 700;
 }
 
-.pdf-meta, .task-meta {
+.pdf-meta {
   font-size: 12px;
   color: var(--muted);
   margin-top: 2px;
+}
+
+/* ===== TASK CARD (List View) ===== */
+.task-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-top: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.task-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px 8px;
+}
+
+.task-card-title-section {
+  flex: 1;
+  min-width: 0;
+}
+
+.task-card-project {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 2px;
+}
+
+.task-card-name {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.task-card-date {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #ebf8ff;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.task-card-date.today {
+  background: #f0fff4;
+  color: var(--success);
+}
+
+.task-card-date.past {
+  background: #fff5f5;
+  color: #c53030;
+}
+
+/* Task card details */
+.task-card-details {
+  padding: 0 16px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.task-card-detail {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.detail-icon {
+  flex-shrink: 0;
+  font-size: 14px;
+}
+
+/* Task card footer */
+.task-card-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 16px 12px;
+}
+
+/* ===== TASK DETAIL (Single Task View) ===== */
+.task-detail {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #fff;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.task-detail-project {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 4px;
+}
+
+.task-detail-name {
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+
+.task-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.task-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.detail-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+}
+
+.detail-value {
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+/* Description */
+.task-detail-description {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.detail-description-content {
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.detail-description-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 8px 0;
+}
+
+.detail-description-content td,
+.detail-description-content th {
+  border: 1px solid var(--border);
+  padding: 8px;
+  font-size: 13px;
+}
+
+.detail-description-content ul {
+  padding-left: 20px;
+  margin: 8px 0;
+}
+
+.detail-description-content li {
+  margin-bottom: 4px;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 600px) {
+  body {
+    padding: 16px 8px;
+  }
+
+  .task-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .task-card-header {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .task-card-date {
+    align-self: flex-start;
+  }
 }
