@@ -231,15 +231,23 @@ function renderMyTasks(tasks) {
     openBtn.textContent = "Open";
     openBtn.className = "secondary";
     openBtn.addEventListener("click", async () => {
-      // Render detail immediately from cached list data
-      taskIdInput.value = t.id;
+      const detailView = document.getElementById("taskDetailView");
+      const listEl = document.getElementById("myTasksList");
+
+      // Show detail, hide list
       renderTaskDetail(t);
-      statusEl.textContent = "PDFs laden\u2026";
-      out.textContent = JSON.stringify(t, null, 2);
       renderPdfsSafe([]);
+      detailView.style.display = "";
+      listEl.style.display = "none";
       window.scrollTo({ top: 0, behavior: "smooth" });
 
-      // Only fetch the task via API to get PDFs
+      // Back button
+      document.getElementById("backToList").onclick = () => {
+        detailView.style.display = "none";
+        listEl.style.display = "";
+      };
+
+      // Fetch full task data for PDFs
       const {u, p} = getCreds();
       if (!u || !p) return;
       try {
@@ -256,11 +264,9 @@ function renderMyTasks(tasks) {
           const data = await res.json();
           const payload = Array.isArray(data) ? data[0] : (data?.data?.[0] || data);
           renderPdfsSafe(payload?.pdfs || []);
-          statusEl.textContent = "Success";
         }
       } catch (err) {
         console.error("[taskList] PDF fetch error:", err);
-        statusEl.textContent = "PDFs konden niet geladen worden.";
       }
     });
 
