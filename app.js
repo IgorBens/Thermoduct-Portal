@@ -166,7 +166,109 @@ function renderPdfsSafe(pdfs) {
   });
 }
 
-// ===== TASK FUNCTIONS =====
-// fetchTask() is now in taskSearch.js
-// fetchMyTasks() and renderMyTasks() are now in taskList.js
-// Event listeners and init are now in init.js
+// ===== TASK DETAIL =====
+function renderTaskDetail(task) {
+  const detailEl = document.getElementById("taskDetail");
+  if (!detailEl) return;
+
+  detailEl.innerHTML = "";
+
+  if (!task || !task.id) {
+    detailEl.innerHTML = '<div class="hint">Geen taak data.</div>';
+    return;
+  }
+
+  const projectName = task.project_name || "";
+  const taskName = task.name || task.display_name || "Task";
+  const orderNumber = task.order_number || "";
+  const addressName = task.address_name || "";
+  const addressFull = task.address_full || "";
+  const projectLeader = task.project_leader || "";
+  const description = task.description || "";
+
+  let dateStr = task.date || "";
+  if (!dateStr && task.planned_date_begin) {
+    dateStr = String(task.planned_date_begin).split(' ')[0];
+  }
+  let dateLabel = dateStr;
+  if (dateStr && typeof formatDateLabel === "function") {
+    dateLabel = formatDateLabel(dateStr);
+  }
+
+  const card = document.createElement("div");
+  card.className = "task-detail";
+
+  if (projectName) {
+    const projEl = document.createElement("div");
+    projEl.className = "task-detail-project";
+    projEl.textContent = projectName;
+    card.appendChild(projEl);
+  }
+
+  const nameRow = document.createElement("div");
+  nameRow.className = "task-detail-name";
+  nameRow.textContent = taskName;
+  if (orderNumber) {
+    nameRow.textContent += ` \u2022 ${orderNumber}`;
+  }
+  card.appendChild(nameRow);
+
+  const grid = document.createElement("div");
+  grid.className = "task-detail-grid";
+
+  if (dateLabel) {
+    grid.innerHTML += `
+      <div class="task-detail-item">
+        <span class="detail-label">Datum</span>
+        <span class="detail-value">${dateLabel}</span>
+      </div>`;
+  }
+
+  if (projectLeader) {
+    const safeLeader = document.createElement("span");
+    safeLeader.textContent = projectLeader;
+    grid.innerHTML += `
+      <div class="task-detail-item">
+        <span class="detail-label">Projectleider</span>
+        <span class="detail-value">${safeLeader.innerHTML}</span>
+      </div>`;
+  }
+
+  if (addressName || addressFull) {
+    const safeAddrName = document.createElement("span");
+    safeAddrName.textContent = addressName;
+    const safeAddrFull = document.createElement("span");
+    safeAddrFull.textContent = addressFull;
+    grid.innerHTML += `
+      <div class="task-detail-item">
+        <span class="detail-label">Adres</span>
+        <span class="detail-value">
+          ${addressName ? `<strong>${safeAddrName.innerHTML}</strong>` : ""}
+          ${addressFull ? `<br>${safeAddrFull.innerHTML}` : ""}
+        </span>
+      </div>`;
+  }
+
+  if (grid.children.length > 0) {
+    card.appendChild(grid);
+  }
+
+  if (description) {
+    const descSection = document.createElement("div");
+    descSection.className = "task-detail-description";
+
+    const descTitle = document.createElement("div");
+    descTitle.className = "detail-label";
+    descTitle.textContent = "Omschrijving";
+    descSection.appendChild(descTitle);
+
+    const descContent = document.createElement("div");
+    descContent.className = "detail-description-content";
+    descContent.innerHTML = description;
+    descSection.appendChild(descContent);
+
+    card.appendChild(descSection);
+  }
+
+  detailEl.appendChild(card);
+}
