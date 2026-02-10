@@ -37,10 +37,10 @@
     </div>
     <div id="myTasksStatus" class="hint">—</div>
     <div id="taskDetailView" style="display:none;">
+      <button id="backToList" class="secondary" style="margin-bottom:8px;">Terug naar lijst</button>
       <div id="taskDetail"></div>
       <div class="section-title">PDFs</div>
       <div id="pdfs" class="hint">—</div>
-      <button id="backToList" class="secondary" style="margin-top:8px;">Terug naar lijst</button>
     </div>
     <div id="myTasksList"></div>
   </div>
@@ -49,7 +49,6 @@
 <!-- Core app (config, auth, helpers) -->
 <script src="app.js"></script>
 <!-- Task modules (split for easier debugging) -->
-<script src="taskSearch.js"></script>
 <script src="taskList.js"></script>
 <!-- Event listeners and init (must load last) -->
 <script src="init.js"></script>
