@@ -9,11 +9,6 @@ logoutBtn.addEventListener("click", () => {
   myTasksStatus.textContent = "—";
 });
 
-btn.addEventListener("click", fetchTask);
-taskIdInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") fetchTask();
-});
-
 myTasksBtn.addEventListener("click", fetchMyTasks);
 
 // ===== INIT =====

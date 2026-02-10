@@ -23,43 +23,20 @@
     <div class="hint" id="loginStatus">Not logged in.</div>
   </div>
 
-  <!-- TASK LOOKUP + MY TASKS -->
+  <!-- MY TASKS -->
   <div class="card">
-    <div class="row">
-      <input id="taskId" type="number" placeholder="Task ID (e.g. 3369)" />
-      <button id="btn">Fetch task</button>
+    <div class="section-title">My tasks</div>
+    <div class="row" style="margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+      <button id="myTasksBtn" class="secondary">Load my tasks</button>
+      <select id="dateFilter">
+        <option value="">Alle datums</option>
+      </select>
+      <label style="display:flex; align-items:center; gap:4px; font-size:14px;">
+        <input type="checkbox" id="showPastDates"> Toon verleden
+      </label>
     </div>
-
-    <div class="hint">Calls secured n8n webhook</div>
-
-    <div class="output">
-      <div id="status" class="status">Waiting for input…</div>
-
-      <!-- Task detail view (rendered by taskSearch.js) -->
-      <div id="taskDetail"></div>
-
-      <div class="section-title">PDFs</div>
-      <div id="pdfs" class="hint">—</div>
-
-      <details style="margin-top:12px;">
-        <summary class="section-title" style="cursor:pointer;">Raw JSON</summary>
-        <pre id="out">—</pre>
-      </details>
-
-      <!-- MY TASKS -->
-      <div class="section-title" style="margin-top:16px;">My tasks</div>
-      <div class="row" style="margin-bottom:8px; flex-wrap:wrap; gap:8px;">
-        <button id="myTasksBtn" class="secondary">Load my tasks</button>
-        <select id="dateFilter">
-          <option value="">Alle datums</option>
-        </select>
-        <label style="display:flex; align-items:center; gap:4px; font-size:14px;">
-          <input type="checkbox" id="showPastDates"> Toon verleden
-        </label>
-      </div>
-      <div id="myTasksStatus" class="hint">—</div>
-      <div id="myTasksList"></div>
-    </div>
+    <div id="myTasksStatus" class="hint">—</div>
+    <div id="myTasksList"></div>
   </div>
 </div>
 

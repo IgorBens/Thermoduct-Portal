@@ -3,11 +3,6 @@ const WEBHOOK_BASE = "http://46.225.76.46:5678/webhook/c3f563b3-c04f-4b01-820d-1
 const AUTH_WEBHOOK = "http://46.225.76.46:5678/webhook/auth/login";
 
 // ===== DOM ELEMENTS =====
-const out = document.getElementById("out");
-const statusEl = document.getElementById("status");
-const taskIdInput = document.getElementById("taskId");
-const btn = document.getElementById("btn");
-const pdfsEl = document.getElementById("pdfs");
 
 const uEl = document.getElementById("u");
 const pEl = document.getElementById("p");
