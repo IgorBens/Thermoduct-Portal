@@ -148,8 +148,15 @@ async function loadDocFiles(folderPath, filesListEl) {
   filesListEl.innerHTML = '<p class="doc-loading">Bestanden laden...</p>';
 
   try {
+    const { u, p } = getCreds();
     const res = await fetch(
-      `${WEBHOOK_FILES}?project_id=${currentProjectId}&folder_path=${encodeURIComponent(folderPath)}`
+      `${WEBHOOK_FILES}?project_id=${currentProjectId}&folder_path=${encodeURIComponent(folderPath)}`,
+      {
+        headers: {
+          "Accept": "application/json",
+          "Authorization": basicAuthHeader(u, p),
+        },
+      }
     );
     const data = await res.json();
 
@@ -257,9 +264,13 @@ async function deleteDocFile(folderPath, fileName, btnEl) {
   btnEl.textContent = "...";
 
   try {
+    const { u, p } = getCreds();
     const res = await fetch(WEBHOOK_FILE_DELETE, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": basicAuthHeader(u, p),
+      },
       body: JSON.stringify({
         project_id: currentProjectId,
         folder_path: folderPath,
@@ -302,8 +313,15 @@ async function fetchFoldersForProject(projectId) {
   container.innerHTML = '<p class="hint">Mappen laden...</p>';
 
   try {
+    const { u, p } = getCreds();
     const res = await fetch(
-      `${WEBHOOK_FOLDERS}?project_id=${encodeURIComponent(projectId)}`
+      `${WEBHOOK_FOLDERS}?project_id=${encodeURIComponent(projectId)}`,
+      {
+        headers: {
+          "Accept": "application/json",
+          "Authorization": basicAuthHeader(u, p),
+        },
+      }
     );
     const data = await res.json();
 
