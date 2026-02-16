@@ -3,7 +3,7 @@
 // Folder structure: Gebouw > Verdiep > Collector (from thermoduct dashboard)
 
 const FOLDERS_WEBHOOK = "http://46.225.76.46:5678/webhook/thermoduct-folders";
-const UPLOAD_WEBHOOK = "http://46.225.76.46:5678/webhook/thermoduct-upload";
+const UPLOAD_WEBHOOK = "http://46.225.76.46:5678/webhook/c939dab0-c13d-4f51-95b7-50ddc4068880";
 
 // DOM elements
 const folderStructureEl = document.getElementById("folderStructure");
@@ -233,60 +233,42 @@ async function uploadPhotos() {
     return;
   }
 
-  const { u, p } = getCreds();
-  if (!u || !p) {
-    photoUploadStatus.textContent = "Log eerst in.";
-    return;
-  }
-
   uploadPhotosBtn.disabled = true;
   const total = selectedPhotos.length;
-  let uploaded = 0;
-  let failed = 0;
+  photoUploadStatus.textContent = `Uploaden: ${total} foto${total === 1 ? "" : "'s"}...`;
 
-  photoUploadStatus.textContent = `Uploaden: 0/${total}...`;
+  try {
+    const formData = new FormData();
 
-  for (const file of selectedPhotos) {
-    try {
-      const formData = new FormData();
-      formData.append("photo", file);
-      formData.append("folder", selectedFolder);
-      formData.append("project_id", String(currentProjectId || ""));
-      if (currentTaskForUpload) {
-        formData.append("task_id", String(currentTaskForUpload.id || ""));
-        formData.append("project_name", currentTaskForUpload.project_name || "");
-      }
-
-      const res = await fetch(UPLOAD_WEBHOOK, {
-        method: "POST",
-        headers: {
-          "Authorization": basicAuthHeader(u, p),
-        },
-        body: formData,
-      });
-
-      if (res.ok) {
-        uploaded++;
-      } else {
-        failed++;
-        console.error(`[photoUpload] Upload failed for ${file.name}: HTTP ${res.status}`);
-      }
-    } catch (err) {
-      failed++;
-      console.error(`[photoUpload] Upload error for ${file.name}:`, err);
+    // All photos in one field matching the n8n Form Trigger field name
+    for (const file of selectedPhotos) {
+      formData.append("Foto's", file);
     }
 
-    photoUploadStatus.textContent = `Uploaden: ${uploaded + failed}/${total}...`;
+    // Metadata as extra form fields
+    formData.append("folder", selectedFolder);
+    formData.append("project_id", String(currentProjectId || ""));
+    formData.append("task_id", String(currentTaskForUpload?.id || ""));
+    formData.append("project_name", currentTaskForUpload?.project_name || "");
+
+    const res = await fetch(UPLOAD_WEBHOOK, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (res.ok) {
+      photoUploadStatus.innerHTML = `<span style="color:var(--success);">${total} foto${total === 1 ? "" : "'s"} succesvol ge\u00fcpload!</span>`;
+      clearPhotos();
+    } else {
+      console.error("[photoUpload] Upload failed: HTTP", res.status);
+      photoUploadStatus.innerHTML = `<span style="color:var(--warning);">Upload mislukt (HTTP ${res.status}).</span>`;
+    }
+  } catch (err) {
+    console.error("[photoUpload] Upload error:", err);
+    photoUploadStatus.innerHTML = `<span style="color:var(--warning);">Netwerkfout bij uploaden.</span>`;
   }
 
   uploadPhotosBtn.disabled = false;
-
-  if (failed === 0) {
-    photoUploadStatus.innerHTML = `<span style="color:var(--success);">${uploaded} foto${uploaded === 1 ? "" : "'s"} succesvol ge\u00fcpload!</span>`;
-    clearPhotos();
-  } else {
-    photoUploadStatus.innerHTML = `<span style="color:var(--warning);">${uploaded} ge\u00fcpload, ${failed} mislukt.</span>`;
-  }
 }
 
 // ===== DRAG & DROP =====
