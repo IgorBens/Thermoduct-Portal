@@ -1,9 +1,9 @@
 // ===== PHOTO UPLOAD =====
 // Handles photo selection, preview, and upload to backend
-// Folder structure is fetched from the thermoduct dashboard backend
+// Folder structure: Gebouw > Verdiep > Collector (from thermoduct dashboard)
 
-const UPLOAD_WEBHOOK = WEBHOOK_BASE + "/upload-photo";
-const FOLDERS_WEBHOOK = WEBHOOK_BASE + "/folders";
+const FOLDERS_WEBHOOK = "http://46.225.76.46:5678/webhook/thermoduct-folders";
+const UPLOAD_WEBHOOK = "http://46.225.76.46:5678/webhook/thermoduct-upload";
 
 // DOM elements
 const folderStructureEl = document.getElementById("folderStructure");
@@ -18,46 +18,99 @@ const clearPhotosBtn = document.getElementById("clearPhotosBtn");
 
 // State
 let selectedPhotos = [];
-let selectedFolder = null;
+let selectedFolder = null; // full collector path e.g. "1/+00/collector_1"
 let currentTaskForUpload = null;
+let currentProjectId = null;
 
-// ===== FOLDER STRUCTURE =====
+// ===== FOLDER TREE (Gebouw > Verdiep > Collector) =====
 
-function renderFolderSelector(folders, task) {
+function renderFolderTree(tree) {
   folderStructureEl.innerHTML = "";
   folderStructureEl.className = "";
 
-  if (!folders || folders.length === 0) {
+  if (!tree || tree.length === 0) {
     folderStructureEl.className = "hint";
-    folderStructureEl.textContent = "Geen mappen beschikbaar.";
+    folderStructureEl.textContent = "Geen mappenstructuur gevonden voor dit project.";
     photoDropzone.style.display = "none";
     return;
   }
 
-  const label = document.createElement("div");
-  label.className = "folder-label";
-  label.textContent = "Selecteer een map:";
-  folderStructureEl.appendChild(label);
+  const container = document.createElement("div");
+  container.className = "folder-tree";
 
-  const list = document.createElement("div");
-  list.className = "folder-list";
+  tree.forEach(gebouw => {
+    const gebouwEl = document.createElement("div");
+    gebouwEl.className = "folder-gebouw";
 
-  folders.forEach(folder => {
-    const btn = document.createElement("button");
-    btn.className = "folder-btn";
-    btn.innerHTML = `<span class="folder-icon">&#128193;</span> ${escapeHtml(folder.name || folder)}`;
-    btn.addEventListener("click", () => {
-      // Deselect all
-      list.querySelectorAll(".folder-btn").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      selectedFolder = folder.path || folder.name || folder;
-      photoDropzone.style.display = "";
-      photoUploadStatus.textContent = `Map: ${selectedFolder}`;
+    // Gebouw header
+    const gebouwHeader = document.createElement("div");
+    gebouwHeader.className = "folder-gebouw-header";
+    gebouwHeader.innerHTML = `<span class="folder-icon">&#127970;</span> Gebouw ${escapeHtml(String(gebouw.name))}`;
+    gebouwHeader.addEventListener("click", () => {
+      gebouwEl.classList.toggle("collapsed");
     });
-    list.appendChild(btn);
+    gebouwEl.appendChild(gebouwHeader);
+
+    // Verdiepen
+    const verdiepenContainer = document.createElement("div");
+    verdiepenContainer.className = "folder-verdiepen";
+
+    if (gebouw.verdiepen && gebouw.verdiepen.length > 0) {
+      gebouw.verdiepen.forEach(verdiep => {
+        const verdiepEl = document.createElement("div");
+        verdiepEl.className = "folder-verdiep";
+
+        const verdiepHeader = document.createElement("div");
+        verdiepHeader.className = "folder-verdiep-header";
+        verdiepHeader.innerHTML = `<span class="folder-icon">&#128205;</span> Verdiep ${escapeHtml(String(verdiep.name))}`;
+        verdiepHeader.addEventListener("click", () => {
+          verdiepEl.classList.toggle("collapsed");
+        });
+        verdiepEl.appendChild(verdiepHeader);
+
+        // Collectoren
+        const collectorenContainer = document.createElement("div");
+        collectorenContainer.className = "folder-collectoren";
+
+        if (verdiep.collectoren && verdiep.collectoren.length > 0) {
+          verdiep.collectoren.forEach(collector => {
+            const btn = document.createElement("button");
+            btn.className = "folder-collector-btn";
+            btn.innerHTML = `<span class="folder-icon">&#128193;</span> ${escapeHtml(String(collector.name))}`;
+            btn.addEventListener("click", () => {
+              // Deselect all collector buttons
+              container.querySelectorAll(".folder-collector-btn").forEach(b => b.classList.remove("active"));
+              btn.classList.add("active");
+              selectedFolder = collector.path;
+              photoDropzone.style.display = "";
+              photoUploadStatus.textContent = `Map: Gebouw ${gebouw.name} / Verdiep ${verdiep.name} / ${collector.name}`;
+            });
+            collectorenContainer.appendChild(btn);
+          });
+        } else {
+          const hint = document.createElement("div");
+          hint.className = "hint";
+          hint.style.marginLeft = "24px";
+          hint.textContent = "Geen collectoren";
+          collectorenContainer.appendChild(hint);
+        }
+
+        verdiepEl.appendChild(collectorenContainer);
+        verdiepenContainer.appendChild(verdiepEl);
+      });
+    } else {
+      const hint = document.createElement("div");
+      hint.className = "hint";
+      hint.style.marginLeft = "16px";
+      hint.textContent = "Geen verdiepen";
+      verdiepenContainer.appendChild(hint);
+    }
+
+    gebouwEl.appendChild(verdiepenContainer);
+    container.appendChild(gebouwEl);
   });
 
-  folderStructureEl.appendChild(list);
+  folderStructureEl.appendChild(container);
 }
 
 async function fetchFolders(task) {
@@ -67,12 +120,12 @@ async function fetchFolders(task) {
   folderStructureEl.className = "hint";
   folderStructureEl.textContent = "Mappen laden...";
 
-  try {
-    const params = new URLSearchParams();
-    if (task.project_name) params.set("project", task.project_name);
-    if (task.id) params.set("task_id", task.id);
+  // Use project_id from task data
+  const projectId = task.project_id || task.id;
+  currentProjectId = projectId;
 
-    const url = `${FOLDERS_WEBHOOK}?${params.toString()}`;
+  try {
+    const url = `${FOLDERS_WEBHOOK}?project_id=${encodeURIComponent(projectId)}`;
     const res = await fetch(url, {
       method: "GET",
       headers: {
@@ -84,44 +137,26 @@ async function fetchFolders(task) {
 
     if (res.ok) {
       const data = await res.json();
-      const folders = Array.isArray(data) ? data : (data.folders || []);
-      renderFolderSelector(folders, task);
+
+      if (data.success && data.tree) {
+        renderFolderTree(data.tree);
+      } else if (data.exists === false) {
+        folderStructureEl.className = "hint";
+        folderStructureEl.textContent = "Geen mappenstructuur gevonden voor dit project. Maak eerst mappen aan in het Thermoduct Dashboard.";
+      } else {
+        folderStructureEl.className = "hint";
+        folderStructureEl.textContent = "Kon mappenstructuur niet laden.";
+      }
     } else {
-      // Fallback: generate default folders based on task info
-      const defaultFolders = generateDefaultFolders(task);
-      renderFolderSelector(defaultFolders, task);
+      console.error("[photoUpload] Folders HTTP error:", res.status);
+      folderStructureEl.className = "hint";
+      folderStructureEl.textContent = "Fout bij laden van mappen.";
     }
   } catch (err) {
     console.error("[photoUpload] Folder fetch error:", err);
-    // Fallback: generate default folders
-    const defaultFolders = generateDefaultFolders(task);
-    renderFolderSelector(defaultFolders, task);
+    folderStructureEl.className = "hint";
+    folderStructureEl.textContent = "Netwerkfout bij laden van mappen.";
   }
-}
-
-function generateDefaultFolders(task) {
-  const folders = [];
-  const projectName = task.project_name || "Onbekend project";
-  const taskName = task.name || task.display_name || `Taak ${task.id}`;
-
-  folders.push({
-    name: `${projectName} / ${taskName} / Voor installatie`,
-    path: `${projectName}/${taskName}/voor-installatie`
-  });
-  folders.push({
-    name: `${projectName} / ${taskName} / Tijdens installatie`,
-    path: `${projectName}/${taskName}/tijdens-installatie`
-  });
-  folders.push({
-    name: `${projectName} / ${taskName} / Na installatie`,
-    path: `${projectName}/${taskName}/na-installatie`
-  });
-  folders.push({
-    name: `${projectName} / ${taskName} / Overig`,
-    path: `${projectName}/${taskName}/overig`
-  });
-
-  return folders;
 }
 
 // ===== PHOTO SELECTION & PREVIEW =====
@@ -174,7 +209,7 @@ function updateUploadActions() {
   if (selectedPhotos.length > 0) {
     photoUploadActions.style.display = "";
     photoUploadStatus.textContent = `${selectedPhotos.length} foto${selectedPhotos.length === 1 ? "" : "'s"} geselecteerd` +
-      (selectedFolder ? ` — Map: ${selectedFolder}` : "");
+      (selectedFolder ? ` \u2014 Map: ${selectedFolder}` : "");
   } else {
     photoUploadActions.style.display = "none";
     photoUploadStatus.textContent = selectedFolder ? `Map: ${selectedFolder}` : "";
@@ -196,7 +231,7 @@ async function uploadPhotos() {
     return;
   }
   if (!selectedFolder) {
-    photoUploadStatus.textContent = "Selecteer eerst een map.";
+    photoUploadStatus.textContent = "Selecteer eerst een collector map.";
     return;
   }
 
@@ -218,6 +253,7 @@ async function uploadPhotos() {
       const formData = new FormData();
       formData.append("photo", file);
       formData.append("folder", selectedFolder);
+      formData.append("project_id", String(currentProjectId || ""));
       if (currentTaskForUpload) {
         formData.append("task_id", String(currentTaskForUpload.id || ""));
         formData.append("project_name", currentTaskForUpload.project_name || "");
@@ -290,6 +326,7 @@ function initDropzone() {
 
 function initPhotoUploadForTask(task) {
   currentTaskForUpload = task;
+  currentProjectId = null;
   selectedPhotos = [];
   selectedFolder = null;
   photoPreview.innerHTML = "";

@@ -318,44 +318,107 @@ pre {
 }
 
 /* ===== PHOTO UPLOAD ===== */
-.folder-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--muted);
-  margin-bottom: 8px;
-}
 
-.folder-list {
+/* Folder tree structure */
+.folder-tree {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 8px;
 }
 
-.folder-btn {
+.folder-gebouw {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.folder-gebouw-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.folder-gebouw-header:hover {
+  opacity: 0.9;
+}
+
+.folder-gebouw.collapsed .folder-verdiepen {
+  display: none;
+}
+
+.folder-verdiepen {
+  padding: 4px 0;
+}
+
+.folder-verdiep {
+  border-bottom: 1px solid var(--border);
+}
+
+.folder-verdiep:last-child {
+  border-bottom: none;
+}
+
+.folder-verdiep-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px 8px 24px;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--accent);
+  cursor: pointer;
+  user-select: none;
+  background: #f7fafc;
+}
+
+.folder-verdiep-header:hover {
+  background: #edf2f7;
+}
+
+.folder-verdiep.collapsed .folder-collectoren {
+  display: none;
+}
+
+.folder-collectoren {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 14px 10px 40px;
+}
+
+.folder-collector-btn {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 14px;
-  background: #f7fafc;
+  padding: 7px 12px;
+  background: #fff;
   border: 1px solid var(--border);
   border-radius: 8px;
   font-size: 13px;
   color: var(--text);
   cursor: pointer;
   font-weight: 500;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
 }
 
-.folder-btn:hover {
+.folder-collector-btn:hover {
   border-color: var(--accent);
   background: #ebf8ff;
 }
 
-.folder-btn.active {
+.folder-collector-btn.active {
   border-color: var(--accent);
   background: #ebf8ff;
   color: var(--accent);
   font-weight: 600;
+  box-shadow: 0 0 0 2px rgba(43, 108, 176, 0.15);
 }
 
 .folder-icon {
