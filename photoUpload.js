@@ -332,14 +332,10 @@ function initPhotoUploadForTask(task) {
   photoUploadStatus.textContent = "";
   photoDropzone.style.display = "none";
 
-  // If task already has project_id, fetch folders immediately
-  if (task.project_id) {
-    fetchFoldersForProject(task.project_id);
-  } else {
-    // Show waiting message — project_id will come from full task detail fetch
-    folderStructureEl.className = "hint";
-    folderStructureEl.textContent = "Project gegevens laden...";
-  }
+  // Always wait for the full task detail fetch to provide the correct project_id
+  // The list item may not have project_id or may have an incorrect value
+  folderStructureEl.className = "hint";
+  folderStructureEl.textContent = "Project gegevens laden...";
 }
 
 // Called from taskList.js after full task detail is fetched
