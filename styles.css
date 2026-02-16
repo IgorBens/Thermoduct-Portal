@@ -317,198 +317,184 @@ pre {
   margin-bottom: 4px;
 }
 
-/* ===== PHOTO UPLOAD ===== */
+/* ===== DOCUMENTEN (Folder Tree + Thumbnails) ===== */
 
-/* Folder tree structure */
-.folder-tree {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.folder-gebouw {
+.doc-gebouw {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
+  margin-bottom: 8px;
 }
 
-.folder-gebouw-header {
+.doc-gebouw-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
   padding: 10px 14px;
   background: var(--primary);
   color: #fff;
-  font-weight: 600;
   font-size: 14px;
   cursor: pointer;
   user-select: none;
 }
 
-.folder-gebouw-header:hover {
-  opacity: 0.9;
-}
+.doc-gebouw-header:hover { opacity: 0.9; }
 
-.folder-gebouw.collapsed .folder-verdiepen {
-  display: none;
-}
+.doc-gebouw-body { display: none; }
+.doc-gebouw-body.open { display: block; }
 
-.folder-verdiepen {
-  padding: 4px 0;
-}
-
-.folder-verdiep {
+.doc-verdiep {
   border-bottom: 1px solid var(--border);
 }
+.doc-verdiep:last-child { border-bottom: none; }
 
-.folder-verdiep:last-child {
-  border-bottom: none;
-}
-
-.folder-verdiep-header {
+.doc-verdiep-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
   padding: 8px 14px 8px 24px;
-  font-weight: 600;
   font-size: 13px;
+  font-weight: 600;
   color: var(--accent);
+  background: #f7fafc;
   cursor: pointer;
   user-select: none;
-  background: #f7fafc;
+}
+.doc-verdiep-header:hover { background: #edf2f7; }
+
+.doc-verdiep-body { display: none; }
+.doc-verdiep-body.open { display: block; }
+
+.doc-collector {
+  border-top: 1px solid var(--border);
 }
 
-.folder-verdiep-header:hover {
-  background: #edf2f7;
-}
-
-.folder-verdiep.collapsed .folder-collectoren {
-  display: none;
-}
-
-.folder-collectoren {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 8px 14px 10px 40px;
-}
-
-.folder-collector-btn {
+.doc-collector-header {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 12px;
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  justify-content: space-between;
+  padding: 8px 14px 8px 40px;
   font-size: 13px;
-  color: var(--text);
   cursor: pointer;
-  font-weight: 500;
-  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  user-select: none;
 }
+.doc-collector-header:hover { background: #f0f4f8; }
 
-.folder-collector-btn:hover {
-  border-color: var(--accent);
-  background: #ebf8ff;
-}
+.doc-collector-body { display: none; padding: 8px 14px 12px 40px; }
+.doc-collector-body.open { display: block; }
 
-.folder-collector-btn.active {
-  border-color: var(--accent);
-  background: #ebf8ff;
-  color: var(--accent);
-  font-weight: 600;
-  box-shadow: 0 0 0 2px rgba(43, 108, 176, 0.15);
-}
-
-.folder-icon {
-  font-size: 16px;
-}
-
-.photo-dropzone {
-  border: 2px dashed var(--border);
-  border-radius: var(--radius);
-  padding: 32px 16px;
-  text-align: center;
-  margin-top: 12px;
-  transition: border-color 0.2s, background 0.2s;
-  cursor: pointer;
-}
-
-.photo-dropzone.dragover {
-  border-color: var(--accent);
-  background: #ebf8ff;
-}
-
-.dropzone-content {
+.doc-header-left {
   display: flex;
-  flex-direction: column;
   align-items: center;
   gap: 8px;
 }
 
-.dropzone-icon {
-  font-size: 32px;
+.doc-chevron {
+  display: inline-block;
+  font-size: 10px;
+  transition: transform 0.2s;
+}
+.doc-chevron.open { transform: rotate(90deg); }
+
+.doc-folder-icon { font-size: 16px; }
+
+.doc-count {
+  font-size: 12px;
+  color: rgba(255,255,255,0.7);
+  font-weight: 400;
+}
+.doc-verdiep-header .doc-count { color: var(--muted); }
+
+/* Upload area inside collector */
+.doc-upload-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
 }
 
-.dropzone-content p {
-  margin: 0;
-  font-size: 14px;
+.doc-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: var(--primary);
+  color: #fff;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+.doc-upload-btn:hover { opacity: 0.9; }
+
+.doc-upload-status {
+  font-size: 12px;
   color: var(--muted);
 }
+.doc-upload-status.active { color: var(--accent); font-weight: 600; }
 
-.photo-preview-grid {
+/* Thumbnails grid */
+.doc-thumbnails {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 12px;
-  margin-top: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 8px;
 }
 
-.photo-preview-item {
-  position: relative;
+.doc-thumb {
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
   background: #fff;
 }
 
-.photo-preview-item img {
+.doc-thumb img {
   width: 100%;
-  height: 100px;
+  height: 90px;
   object-fit: cover;
   display: block;
-}
-
-.photo-remove-btn {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border-radius: 50%;
-  background: rgba(0,0,0,0.6);
-  color: #fff;
-  font-size: 16px;
-  line-height: 24px;
-  text-align: center;
   cursor: pointer;
-  border: none;
+}
+.doc-thumb img:hover { opacity: 0.85; }
+
+.doc-thumb-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 6px;
+  gap: 4px;
 }
 
-.photo-preview-name {
-  padding: 4px 6px;
-  font-size: 11px;
+.doc-thumb-name {
+  font-size: 10px;
   color: var(--muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
 }
 
-.photo-upload-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
+.doc-thumb-delete {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #c53030;
+  font-size: 12px;
+  line-height: 20px;
+  text-align: center;
+  cursor: pointer;
+}
+.doc-thumb-delete:hover { background: #fff5f5; }
+
+.doc-loading {
+  margin: 0;
+  font-size: 13px;
+  grid-column: 1 / -1;
 }
 
 /* ===== RESPONSIVE ===== */

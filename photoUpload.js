@@ -1,117 +1,293 @@
-// ===== PHOTO UPLOAD =====
-// Handles photo selection, preview, and upload to backend
-// Folder structure: Gebouw > Verdiep > Collector (from thermoduct dashboard)
+// ===== DOCUMENTEN (Photo Upload per Collector) =====
+// Uses same n8n flows as the Thermoduct Dashboard:
+//   WEBHOOK_DOCS_LIST, WEBHOOK_DOCS_UPLOAD, WEBHOOK_DOCS_DELETE, WEBHOOK_DOCS_FILE
+// Folder structure: Gebouw > Verdiep > Collector (from thermoduct-folders webhook)
 
 const FOLDERS_WEBHOOK = "http://46.225.76.46:5678/webhook/thermoduct-folders";
-const UPLOAD_WEBHOOK = "http://46.225.76.46:5678/webhook/c939dab0-c13d-4f51-95b7-50ddc4068880";
-
-// DOM elements
-const folderStructureEl = document.getElementById("folderStructure");
-const photoDropzone = document.getElementById("photoDropzone");
-const photoFileInput = document.getElementById("photoFileInput");
-const selectPhotosBtn = document.getElementById("selectPhotosBtn");
-const photoPreview = document.getElementById("photoPreview");
-const photoUploadStatus = document.getElementById("photoUploadStatus");
-const photoUploadActions = document.getElementById("photoUploadActions");
-const uploadPhotosBtn = document.getElementById("uploadPhotosBtn");
-const clearPhotosBtn = document.getElementById("clearPhotosBtn");
 
 // State
-let selectedPhotos = [];
-let selectedFolder = null; // full collector path e.g. "1/+00/collector_1"
 let currentTaskForUpload = null;
 let currentProjectId = null;
+const docCache = {};
 
-// ===== FOLDER TREE (Gebouw > Verdiep > Collector) =====
+// ===== FOLDER TREE with inline upload/thumbnails =====
 
-function renderFolderTree(tree) {
-  folderStructureEl.innerHTML = "";
-  folderStructureEl.className = "";
+function renderDocFolderTree(tree) {
+  const container = document.getElementById("docContainer");
+  if (!container) return;
+
+  container.innerHTML = "";
 
   if (!tree || tree.length === 0) {
-    folderStructureEl.className = "hint";
-    folderStructureEl.textContent = "Geen mappenstructuur gevonden voor dit project.";
-    photoDropzone.style.display = "none";
+    container.innerHTML = '<p class="hint">Geen mappenstructuur gevonden voor dit project.</p>';
     return;
   }
 
-  const container = document.createElement("div");
-  container.className = "folder-tree";
+  // Clear cache
+  Object.keys(docCache).forEach(k => delete docCache[k]);
 
   tree.forEach(gebouw => {
     const gebouwEl = document.createElement("div");
-    gebouwEl.className = "folder-gebouw";
+    gebouwEl.className = "doc-gebouw";
 
     // Gebouw header
     const gebouwHeader = document.createElement("div");
-    gebouwHeader.className = "folder-gebouw-header";
-    gebouwHeader.innerHTML = `<span class="folder-icon">&#127970;</span> Gebouw ${escapeHtml(String(gebouw.name))}`;
-    gebouwHeader.addEventListener("click", () => {
-      gebouwEl.classList.toggle("collapsed");
-    });
+    gebouwHeader.className = "doc-gebouw-header";
+    gebouwHeader.innerHTML = `
+      <div class="doc-header-left">
+        <span class="doc-chevron open">&#9654;</span>
+        <span class="doc-folder-icon">&#127970;</span>
+        <strong>Gebouw ${escapeHtml(String(gebouw.name))}</strong>
+      </div>
+      <span class="doc-count">${gebouw.verdiepen ? gebouw.verdiepen.length : 0} verdiep(en)</span>
+    `;
+    gebouwHeader.addEventListener("click", () => toggleDocSection(gebouwHeader));
     gebouwEl.appendChild(gebouwHeader);
 
-    // Verdiepen
-    const verdiepenContainer = document.createElement("div");
-    verdiepenContainer.className = "folder-verdiepen";
+    // Gebouw body
+    const gebouwBody = document.createElement("div");
+    gebouwBody.className = "doc-gebouw-body open";
 
     if (gebouw.verdiepen && gebouw.verdiepen.length > 0) {
       gebouw.verdiepen.forEach(verdiep => {
         const verdiepEl = document.createElement("div");
-        verdiepEl.className = "folder-verdiep";
+        verdiepEl.className = "doc-verdiep";
 
         const verdiepHeader = document.createElement("div");
-        verdiepHeader.className = "folder-verdiep-header";
-        verdiepHeader.innerHTML = `<span class="folder-icon">&#128205;</span> Verdiep ${escapeHtml(String(verdiep.name))}`;
-        verdiepHeader.addEventListener("click", () => {
-          verdiepEl.classList.toggle("collapsed");
-        });
+        verdiepHeader.className = "doc-verdiep-header";
+        verdiepHeader.innerHTML = `
+          <div class="doc-header-left">
+            <span class="doc-chevron open">&#9654;</span>
+            <span class="doc-folder-icon">&#128205;</span>
+            <strong>Verdiep ${escapeHtml(String(verdiep.name))}</strong>
+          </div>
+          <span class="doc-count">${verdiep.collectoren ? verdiep.collectoren.length : 0} collector(en)</span>
+        `;
+        verdiepHeader.addEventListener("click", () => toggleDocSection(verdiepHeader));
         verdiepEl.appendChild(verdiepHeader);
 
-        // Collectoren
-        const collectorenContainer = document.createElement("div");
-        collectorenContainer.className = "folder-collectoren";
+        const verdiepBody = document.createElement("div");
+        verdiepBody.className = "doc-verdiep-body open";
 
         if (verdiep.collectoren && verdiep.collectoren.length > 0) {
           verdiep.collectoren.forEach(collector => {
-            const btn = document.createElement("button");
-            btn.className = "folder-collector-btn";
-            btn.innerHTML = `<span class="folder-icon">&#128193;</span> ${escapeHtml(String(collector.name))}`;
-            btn.addEventListener("click", () => {
-              // Deselect all collector buttons
-              container.querySelectorAll(".folder-collector-btn").forEach(b => b.classList.remove("active"));
-              btn.classList.add("active");
-              selectedFolder = collector.path;
-              photoDropzone.style.display = "";
-              photoUploadStatus.textContent = `Map: Gebouw ${gebouw.name} / Verdiep ${verdiep.name} / ${collector.name}`;
+            const docPath = collector.path || `${gebouw.name}/${verdiep.name}/${collector.name}`;
+
+            const colEl = document.createElement("div");
+            colEl.className = "doc-collector";
+
+            const colHeader = document.createElement("div");
+            colHeader.className = "doc-collector-header";
+            colHeader.dataset.docPath = docPath;
+            colHeader.innerHTML = `
+              <div class="doc-header-left">
+                <span class="doc-chevron">&#9654;</span>
+                <span class="doc-folder-icon">&#128247;</span>
+                <strong>${escapeHtml(String(collector.name))}</strong>
+              </div>
+            `;
+            colHeader.addEventListener("click", () => {
+              toggleDocSection(colHeader);
+              const body = colHeader.nextElementSibling;
+              // Load files when opening
+              if (body.classList.contains("open") && !docCache[docPath]) {
+                loadDocFiles(docPath, body.querySelector(".doc-thumbnails"));
+              }
             });
-            collectorenContainer.appendChild(btn);
+            colEl.appendChild(colHeader);
+
+            const colBody = document.createElement("div");
+            colBody.className = "doc-collector-body";
+
+            // Upload area
+            const uploadArea = document.createElement("div");
+            uploadArea.className = "doc-upload-area";
+            uploadArea.innerHTML = `
+              <label class="doc-upload-btn">
+                <input type="file" accept="image/*,.heic,.webp" multiple style="display:none">
+                &#128247; Foto's uploaden
+              </label>
+              <span class="doc-upload-status"></span>
+            `;
+            const fileInput = uploadArea.querySelector("input[type=file]");
+            fileInput.addEventListener("change", () => {
+              uploadDocFiles(fileInput, docPath);
+            });
+            colBody.appendChild(uploadArea);
+
+            // Thumbnails container
+            const thumbs = document.createElement("div");
+            thumbs.className = "doc-thumbnails";
+            thumbs.innerHTML = '<p class="doc-loading" style="color:#868e96;">Klik om foto\'s te laden.</p>';
+            colBody.appendChild(thumbs);
+
+            colEl.appendChild(colBody);
+            verdiepBody.appendChild(colEl);
           });
         } else {
-          const hint = document.createElement("div");
-          hint.className = "hint";
-          hint.style.marginLeft = "24px";
-          hint.textContent = "Geen collectoren";
-          collectorenContainer.appendChild(hint);
+          verdiepBody.innerHTML = '<p class="hint" style="margin-left:24px;">Geen collectoren</p>';
         }
 
-        verdiepEl.appendChild(collectorenContainer);
-        verdiepenContainer.appendChild(verdiepEl);
+        verdiepEl.appendChild(verdiepBody);
+        gebouwBody.appendChild(verdiepEl);
       });
     } else {
-      const hint = document.createElement("div");
-      hint.className = "hint";
-      hint.style.marginLeft = "16px";
-      hint.textContent = "Geen verdiepen";
-      verdiepenContainer.appendChild(hint);
+      gebouwBody.innerHTML = '<p class="hint" style="margin-left:16px;">Geen verdiepen</p>';
     }
 
-    gebouwEl.appendChild(verdiepenContainer);
+    gebouwEl.appendChild(gebouwBody);
     container.appendChild(gebouwEl);
   });
-
-  folderStructureEl.appendChild(container);
 }
+
+// Toggle open/close for any section header
+function toggleDocSection(headerEl) {
+  const body = headerEl.nextElementSibling;
+  const chevron = headerEl.querySelector(".doc-chevron");
+  if (body) body.classList.toggle("open");
+  if (chevron) chevron.classList.toggle("open");
+}
+
+// ===== LOAD FILES (thumbnails) =====
+
+async function loadDocFiles(path, thumbnailsEl) {
+  if (!currentProjectId) return;
+  thumbnailsEl.innerHTML = '<p class="doc-loading">Laden...</p>';
+
+  try {
+    const res = await fetch(
+      `${WEBHOOK_DOCS_LIST}?project_id=${currentProjectId}&path=${encodeURIComponent(path)}`
+    );
+    if (!res.ok) throw new Error("Fout bij laden");
+    const files = await res.json();
+    docCache[path] = files;
+    renderThumbnails(path, files, thumbnailsEl);
+  } catch (err) {
+    console.error("[docs] Load error:", err);
+    thumbnailsEl.innerHTML = '<p class="doc-loading" style="color:#868e96;">Geen bestanden of niet verbonden.</p>';
+    docCache[path] = [];
+  }
+}
+
+function renderThumbnails(path, files, thumbnailsEl) {
+  if (!files || files.length === 0) {
+    thumbnailsEl.innerHTML = '<p class="doc-loading" style="color:#868e96;">Nog geen foto\'s geupload.</p>';
+    return;
+  }
+
+  thumbnailsEl.innerHTML = "";
+  files.forEach(file => {
+    const thumb = document.createElement("div");
+    thumb.className = "doc-thumb";
+
+    const imgSrc = `${WEBHOOK_DOCS_FILE}?project_id=${currentProjectId}&path=${encodeURIComponent(path)}&file=${encodeURIComponent(file.name)}`;
+
+    const img = document.createElement("img");
+    img.src = imgSrc;
+    img.alt = file.name;
+    img.loading = "lazy";
+    img.addEventListener("click", () => window.open(imgSrc, "_blank"));
+    thumb.appendChild(img);
+
+    const info = document.createElement("div");
+    info.className = "doc-thumb-info";
+
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "doc-thumb-name";
+    nameSpan.title = file.name;
+    nameSpan.textContent = file.name;
+    info.appendChild(nameSpan);
+
+    const delBtn = document.createElement("button");
+    delBtn.className = "btn btn-remove doc-thumb-delete";
+    delBtn.innerHTML = "&#x2715;";
+    delBtn.title = "Verwijderen";
+    delBtn.addEventListener("click", () => deleteDocFile(path, file.name, thumb, thumbnailsEl));
+    info.appendChild(delBtn);
+
+    thumb.appendChild(info);
+    thumbnailsEl.appendChild(thumb);
+  });
+}
+
+// ===== UPLOAD FILES =====
+
+async function uploadDocFiles(input, path) {
+  if (!currentProjectId || !input.files.length) return;
+
+  const collectorBody = input.closest(".doc-collector-body");
+  const thumbnailsEl = collectorBody.querySelector(".doc-thumbnails");
+  const statusEl = collectorBody.querySelector(".doc-upload-status");
+  const files = Array.from(input.files);
+
+  statusEl.textContent = `Uploaden: 0/${files.length}...`;
+  statusEl.classList.add("active");
+
+  let uploaded = 0;
+  for (const file of files) {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("project_id", currentProjectId);
+    formData.append("path", path);
+
+    try {
+      const res = await fetch(WEBHOOK_DOCS_UPLOAD, {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) throw new Error("Upload failed");
+      uploaded++;
+      statusEl.textContent = `Uploaden: ${uploaded}/${files.length}...`;
+    } catch (err) {
+      console.error("[docs] Upload error:", err);
+    }
+  }
+
+  statusEl.textContent = `${uploaded} bestand(en) geupload.`;
+  setTimeout(() => {
+    statusEl.classList.remove("active");
+    statusEl.textContent = "";
+  }, 3000);
+
+  // Refresh file list
+  delete docCache[path];
+  await loadDocFiles(path, thumbnailsEl);
+
+  // Reset input
+  input.value = "";
+}
+
+// ===== DELETE FILE =====
+
+async function deleteDocFile(path, fileName, thumbEl, thumbnailsEl) {
+  if (!confirm(`"${fileName}" verwijderen?`)) return;
+  if (!currentProjectId) return;
+
+  try {
+    await fetch(WEBHOOK_DOCS_DELETE, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        project_id: currentProjectId,
+        path: path,
+        file: fileName,
+      }),
+    });
+
+    // Remove from DOM and cache
+    thumbEl.remove();
+    if (docCache[path]) {
+      docCache[path] = docCache[path].filter(f => f.name !== fileName);
+      if (docCache[path].length === 0) {
+        thumbnailsEl.innerHTML = '<p class="doc-loading" style="color:#868e96;">Nog geen foto\'s geupload.</p>';
+      }
+    }
+  } catch (err) {
+    console.error("[docs] Delete error:", err);
+  }
+}
+
+// ===== FETCH FOLDERS & RENDER =====
 
 async function fetchFoldersForProject(projectId) {
   const { u, p } = getCreds();
@@ -119,8 +295,9 @@ async function fetchFoldersForProject(projectId) {
 
   currentProjectId = projectId;
 
-  folderStructureEl.className = "hint";
-  folderStructureEl.textContent = "Mappen laden...";
+  const container = document.getElementById("docContainer");
+  if (!container) return;
+  container.innerHTML = '<p class="hint">Mappen laden...</p>';
 
   try {
     const url = `${FOLDERS_WEBHOOK}?project_id=${encodeURIComponent(projectId)}`;
@@ -137,169 +314,20 @@ async function fetchFoldersForProject(projectId) {
       const data = await res.json();
 
       if (data.success && data.tree) {
-        renderFolderTree(data.tree);
+        renderDocFolderTree(data.tree);
       } else if (data.exists === false) {
-        folderStructureEl.className = "hint";
-        folderStructureEl.textContent = "Geen mappenstructuur gevonden voor dit project. Maak eerst mappen aan in het Thermoduct Dashboard.";
+        container.innerHTML = '<p class="hint">Geen mappenstructuur gevonden. Maak eerst mappen aan in het Thermoduct Dashboard.</p>';
       } else {
-        folderStructureEl.className = "hint";
-        folderStructureEl.textContent = "Kon mappenstructuur niet laden.";
+        container.innerHTML = '<p class="hint">Kon mappenstructuur niet laden.</p>';
       }
     } else {
-      console.error("[photoUpload] Folders HTTP error:", res.status);
-      folderStructureEl.className = "hint";
-      folderStructureEl.textContent = "Fout bij laden van mappen.";
+      console.error("[docs] Folders HTTP error:", res.status);
+      container.innerHTML = '<p class="hint">Fout bij laden van mappen.</p>';
     }
   } catch (err) {
-    console.error("[photoUpload] Folder fetch error:", err);
-    folderStructureEl.className = "hint";
-    folderStructureEl.textContent = "Netwerkfout bij laden van mappen.";
+    console.error("[docs] Folder fetch error:", err);
+    container.innerHTML = '<p class="hint">Netwerkfout bij laden van mappen.</p>';
   }
-}
-
-// ===== PHOTO SELECTION & PREVIEW =====
-
-function handlePhotoSelect(files) {
-  if (!files || files.length === 0) return;
-
-  for (const file of files) {
-    if (!file.type.startsWith("image/")) continue;
-    selectedPhotos.push(file);
-  }
-
-  renderPhotoPreview();
-  updateUploadActions();
-}
-
-function renderPhotoPreview() {
-  photoPreview.innerHTML = "";
-
-  selectedPhotos.forEach((file, idx) => {
-    const item = document.createElement("div");
-    item.className = "photo-preview-item";
-
-    const img = document.createElement("img");
-    img.src = URL.createObjectURL(file);
-    img.alt = file.name;
-    img.onload = () => URL.revokeObjectURL(img.src);
-
-    const removeBtn = document.createElement("button");
-    removeBtn.className = "photo-remove-btn";
-    removeBtn.innerHTML = "&times;";
-    removeBtn.addEventListener("click", () => {
-      selectedPhotos.splice(idx, 1);
-      renderPhotoPreview();
-      updateUploadActions();
-    });
-
-    const name = document.createElement("div");
-    name.className = "photo-preview-name";
-    name.textContent = file.name;
-
-    item.appendChild(img);
-    item.appendChild(removeBtn);
-    item.appendChild(name);
-    photoPreview.appendChild(item);
-  });
-}
-
-function updateUploadActions() {
-  if (selectedPhotos.length > 0) {
-    photoUploadActions.style.display = "";
-    photoUploadStatus.textContent = `${selectedPhotos.length} foto${selectedPhotos.length === 1 ? "" : "'s"} geselecteerd` +
-      (selectedFolder ? ` \u2014 Map: ${selectedFolder}` : "");
-  } else {
-    photoUploadActions.style.display = "none";
-    photoUploadStatus.textContent = selectedFolder ? `Map: ${selectedFolder}` : "";
-  }
-}
-
-function clearPhotos() {
-  selectedPhotos = [];
-  photoPreview.innerHTML = "";
-  photoFileInput.value = "";
-  updateUploadActions();
-}
-
-// ===== UPLOAD =====
-
-async function uploadPhotos() {
-  if (selectedPhotos.length === 0) {
-    photoUploadStatus.textContent = "Geen foto's geselecteerd.";
-    return;
-  }
-  if (!selectedFolder) {
-    photoUploadStatus.textContent = "Selecteer eerst een collector map.";
-    return;
-  }
-
-  uploadPhotosBtn.disabled = true;
-  const total = selectedPhotos.length;
-  photoUploadStatus.textContent = `Uploaden: ${total} foto${total === 1 ? "" : "'s"}...`;
-
-  try {
-    const formData = new FormData();
-
-    // All photos in one field matching the n8n Form Trigger field name
-    for (const file of selectedPhotos) {
-      formData.append("Foto's", file);
-    }
-
-    // Metadata as extra form fields
-    formData.append("folder", selectedFolder);
-    formData.append("project_id", String(currentProjectId || ""));
-    formData.append("task_id", String(currentTaskForUpload?.id || ""));
-    formData.append("project_name", currentTaskForUpload?.project_name || "");
-
-    const res = await fetch(UPLOAD_WEBHOOK, {
-      method: "POST",
-      body: formData,
-    });
-
-    if (res.ok) {
-      photoUploadStatus.innerHTML = `<span style="color:var(--success);">${total} foto${total === 1 ? "" : "'s"} succesvol ge\u00fcpload!</span>`;
-      clearPhotos();
-    } else {
-      console.error("[photoUpload] Upload failed: HTTP", res.status);
-      photoUploadStatus.innerHTML = `<span style="color:var(--warning);">Upload mislukt (HTTP ${res.status}).</span>`;
-    }
-  } catch (err) {
-    console.error("[photoUpload] Upload error:", err);
-    photoUploadStatus.innerHTML = `<span style="color:var(--warning);">Netwerkfout bij uploaden.</span>`;
-  }
-
-  uploadPhotosBtn.disabled = false;
-}
-
-// ===== DRAG & DROP =====
-
-function initDropzone() {
-  photoDropzone.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    photoDropzone.classList.add("dragover");
-  });
-
-  photoDropzone.addEventListener("dragleave", () => {
-    photoDropzone.classList.remove("dragover");
-  });
-
-  photoDropzone.addEventListener("drop", (e) => {
-    e.preventDefault();
-    photoDropzone.classList.remove("dragover");
-    handlePhotoSelect(e.dataTransfer.files);
-  });
-
-  selectPhotosBtn.addEventListener("click", () => {
-    photoFileInput.click();
-  });
-
-  photoFileInput.addEventListener("change", () => {
-    handlePhotoSelect(photoFileInput.files);
-    photoFileInput.value = "";
-  });
-
-  uploadPhotosBtn.addEventListener("click", uploadPhotos);
-  clearPhotosBtn.addEventListener("click", clearPhotos);
 }
 
 // ===== PUBLIC: called when a task detail is opened =====
@@ -307,26 +335,20 @@ function initDropzone() {
 function initPhotoUploadForTask(task) {
   currentTaskForUpload = task;
   currentProjectId = null;
-  selectedPhotos = [];
-  selectedFolder = null;
-  photoPreview.innerHTML = "";
-  photoUploadActions.style.display = "none";
-  photoUploadStatus.textContent = "";
-  photoDropzone.style.display = "none";
 
-  // Always wait for the full task detail fetch to provide the correct project_id
-  // The list item may not have project_id or may have an incorrect value
-  folderStructureEl.className = "hint";
-  folderStructureEl.textContent = "Project gegevens laden...";
+  // Clear cache
+  Object.keys(docCache).forEach(k => delete docCache[k]);
+
+  const container = document.getElementById("docContainer");
+  if (container) {
+    container.innerHTML = '<p class="hint">Project gegevens laden...</p>';
+  }
 }
 
 // Called from taskList.js after full task detail is fetched
 function updatePhotoUploadProjectId(projectId) {
   if (!projectId) return;
-  console.log("[photoUpload] Got project_id:", projectId);
+  console.log("[docs] Got project_id:", projectId);
   currentProjectId = projectId;
   fetchFoldersForProject(projectId);
 }
-
-// Initialize dropzone listeners
-initDropzone();
