@@ -250,7 +250,7 @@ function renderMyTasks(tasks) {
         listEl.style.display = "";
       };
 
-      // Fetch full task data for PDFs
+      // Fetch full task data for PDFs and project_id
       const {u, p} = getCreds();
       if (!u || !p) return;
       try {
@@ -266,7 +266,14 @@ function renderMyTasks(tasks) {
         if (res.ok) {
           const data = await res.json();
           const payload = Array.isArray(data) ? data[0] : (data?.data?.[0] || data);
+          console.log("[taskList] Full task data:", payload);
           renderPdfsSafe(payload?.pdfs || []);
+
+          // Extract project_id and pass to photo upload
+          const projectId = payload?.project_id;
+          if (projectId && typeof updatePhotoUploadProjectId === "function") {
+            updatePhotoUploadProjectId(projectId);
+          }
         }
       } catch (err) {
         console.error("[taskList] PDF fetch error:", err);

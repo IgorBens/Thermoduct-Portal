@@ -113,16 +113,14 @@ function renderFolderTree(tree) {
   folderStructureEl.appendChild(container);
 }
 
-async function fetchFolders(task) {
+async function fetchFoldersForProject(projectId) {
   const { u, p } = getCreds();
   if (!u || !p) return;
 
+  currentProjectId = projectId;
+
   folderStructureEl.className = "hint";
   folderStructureEl.textContent = "Mappen laden...";
-
-  // Use project_id from task data
-  const projectId = task.project_id || task.id;
-  currentProjectId = projectId;
 
   try {
     const url = `${FOLDERS_WEBHOOK}?project_id=${encodeURIComponent(projectId)}`;
@@ -334,7 +332,22 @@ function initPhotoUploadForTask(task) {
   photoUploadStatus.textContent = "";
   photoDropzone.style.display = "none";
 
-  fetchFolders(task);
+  // If task already has project_id, fetch folders immediately
+  if (task.project_id) {
+    fetchFoldersForProject(task.project_id);
+  } else {
+    // Show waiting message — project_id will come from full task detail fetch
+    folderStructureEl.className = "hint";
+    folderStructureEl.textContent = "Project gegevens laden...";
+  }
+}
+
+// Called from taskList.js after full task detail is fetched
+function updatePhotoUploadProjectId(projectId) {
+  if (!projectId) return;
+  console.log("[photoUpload] Got project_id:", projectId);
+  currentProjectId = projectId;
+  fetchFoldersForProject(projectId);
 }
 
 // Initialize dropzone listeners
