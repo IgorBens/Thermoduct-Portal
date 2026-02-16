@@ -1,11 +1,11 @@
 // ===== CONFIGURATION =====
-const WEBHOOK_BASE = "http://46.225.76.46/n8n/webhook/c3f563b3-c04f-4b01-820d-11173ba9bd31/thermoduct";
-const AUTH_WEBHOOK = "http://46.225.76.46/n8n/webhook/auth/login";
-const WEBHOOK_FOLDERS = "http://46.225.76.46/n8n/webhook/thermoduct-folders";
-const WEBHOOK_FILES = "http://46.225.76.46/n8n/webhook/thermoduct-files";
-const WEBHOOK_SERVE_FILE = "http://46.225.76.46/n8n/webhook/thermoduct-serve-file";
-const WEBHOOK_FILE_DELETE = "http://46.225.76.46/n8n/webhook/thermoduct-file-delete";
-const WEBHOOK_UPLOAD_FORM = "http://46.225.76.46/n8n/form/c939dab0-c13d-4f51-95b7-50ddc4068880";
+const WEBHOOK_BASE = "https://46.225.76.46/n8n/webhook/c3f563b3-c04f-4b01-820d-11173ba9bd31/thermoduct";
+const AUTH_WEBHOOK = "https://46.225.76.46/n8n/webhook/auth/login";
+const WEBHOOK_FOLDERS = "https://46.225.76.46/n8n/webhook/thermoduct-folders";
+const WEBHOOK_FILES = "https://46.225.76.46/n8n/webhook/thermoduct-files";
+const WEBHOOK_SERVE_FILE = "https://46.225.76.46/n8n/webhook/thermoduct-serve-file";
+const WEBHOOK_FILE_DELETE = "https://46.225.76.46/n8n/webhook/thermoduct-file-delete";
+const WEBHOOK_UPLOAD_FORM = "https://46.225.76.46/n8n/form/c939dab0-c13d-4f51-95b7-50ddc4068880";
 
 // ===== DOM ELEMENTS =====
 const pdfsEl = document.getElementById("pdfs");
