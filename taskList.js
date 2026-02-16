@@ -237,6 +237,9 @@ function renderMyTasks(tasks) {
       // Show detail, hide list
       renderTaskDetail(t);
       renderPdfsSafe([]);
+      if (typeof initPhotoUploadForTask === "function") {
+        initPhotoUploadForTask(t);
+      }
       detailView.style.display = "";
       listEl.style.display = "none";
       window.scrollTo({ top: 0, behavior: "smooth" });

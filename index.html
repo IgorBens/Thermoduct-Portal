@@ -41,6 +41,26 @@
       <div id="taskDetail"></div>
       <div class="section-title">PDFs</div>
       <div id="pdfs" class="hint">—</div>
+
+      <!-- PHOTO UPLOAD -->
+      <div class="section-title">Foto's uploaden</div>
+      <div id="photoUploadSection">
+        <div id="folderStructure" class="hint">Selecteer een map...</div>
+        <div id="photoDropzone" class="photo-dropzone" style="display:none;">
+          <div class="dropzone-content">
+            <span class="dropzone-icon">&#128247;</span>
+            <p>Sleep foto's hierheen of klik om te selecteren</p>
+            <input type="file" id="photoFileInput" multiple accept="image/*" style="display:none;" />
+            <button id="selectPhotosBtn" class="secondary">Selecteer foto's</button>
+          </div>
+        </div>
+        <div id="photoPreview" class="photo-preview-grid"></div>
+        <div id="photoUploadStatus" class="hint"></div>
+        <div class="photo-upload-actions" id="photoUploadActions" style="display:none;">
+          <button id="uploadPhotosBtn">Uploaden</button>
+          <button id="clearPhotosBtn" class="secondary">Wissen</button>
+        </div>
+      </div>
     </div>
     <div id="myTasksList"></div>
   </div>
@@ -50,6 +70,8 @@
 <script src="app.js"></script>
 <!-- Task modules (split for easier debugging) -->
 <script src="taskList.js"></script>
+<!-- Photo upload module -->
+<script src="photoUpload.js"></script>
 <!-- Event listeners and init (must load last) -->
 <script src="init.js"></script>
 </body>
