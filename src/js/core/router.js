@@ -13,6 +13,7 @@
 //   2. Create css/yourview.css
 //   3. Add <script> and <link> tags in index.html
 //   That's it — no editing router.js or other files.
+//   See ADDING-MODULES.md for full instructions.
 
 const Router = (() => {
   const views = {};
@@ -23,7 +24,7 @@ const Router = (() => {
     const nav      = document.getElementById("mainNav");
     const userInfo = document.getElementById("userInfo");
 
-    if (!Auth.isLoggedIn()) {
+    if (!Auth.isAuthenticated()) {
       header.style.display = "none";
       return;
     }
@@ -31,35 +32,37 @@ const Router = (() => {
     header.style.display = "";
 
     // ── User info ──
-    const user = Auth.getUser();
+    const user  = Auth.getUser();
+    const roles = Auth.getRoles();
     userInfo.innerHTML = "";
 
     const nameSpan = document.createElement("span");
     nameSpan.className = "user-name";
-    nameSpan.textContent = user?.name || "\u2014";
+    nameSpan.textContent = user?.name || user?.preferred_username || "\u2014";
     userInfo.appendChild(nameSpan);
 
-    const roleSpan = document.createElement("span");
-    roleSpan.className = "user-role";
-    roleSpan.textContent = Auth.getRole();
-    userInfo.appendChild(roleSpan);
+    if (roles.length > 0) {
+      const roleSpan = document.createElement("span");
+      roleSpan.className = "user-role";
+      roleSpan.textContent = roles.join(", ");
+      userInfo.appendChild(roleSpan);
+    }
 
     const logoutBtn = document.createElement("button");
     logoutBtn.className = "secondary btn-sm";
     logoutBtn.textContent = "Uitloggen";
-    logoutBtn.addEventListener("click", () => {
-      Auth.logout();
-      Router.showView("login");
-    });
+    logoutBtn.addEventListener("click", () => Auth.logout());
     userInfo.appendChild(logoutBtn);
 
-    // ── Nav tabs (built from registered views) ──
+    // ── Nav tabs (built from registered views, filtered by role) ──
     nav.innerHTML = "";
-    const role = Auth.getRole();
 
     Object.entries(views)
       .filter(([_, m]) => m.tab)
-      .filter(([_, m]) => m.tab.roles.includes("*") || m.tab.roles.includes(role))
+      .filter(([_, m]) => {
+        if (m.tab.roles.includes("*")) return true;
+        return m.tab.roles.some(r => Auth.hasRole(r));
+      })
       .forEach(([name, m]) => {
         const btn = document.createElement("button");
         btn.className = "nav-tab" + (name === current.name ? " active" : "");
@@ -95,7 +98,7 @@ const Router = (() => {
     },
 
     init() {
-      this.showView(Auth.isLoggedIn() ? "tasks" : "login");
+      this.showView(Auth.isAuthenticated() ? "tasks" : "login");
     },
   };
 })();

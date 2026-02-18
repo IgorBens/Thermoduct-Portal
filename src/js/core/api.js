@@ -31,9 +31,9 @@ const Api = (() => {
 
     const res = await fetch(url, { ...options, headers, cache: "no-store" });
 
-    // Auto-logout on expired/invalid token
+    // Token expired — clear local session and show login
     if (res.status === 401) {
-      Auth.logout();
+      Auth.clearSession();
       Router.showView("login");
       throw new Error("Sessie verlopen — log opnieuw in");
     }

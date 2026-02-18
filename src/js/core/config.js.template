@@ -5,21 +5,25 @@
 // and replace the ${...} placeholders with real values.
 
 const CONFIG = Object.freeze({
-  APP_TITLE:            "${APP_TITLE}",
+  APP_TITLE:              "${APP_TITLE}",
 
-  // Authentication (Keychain)
-  AUTH_URL:             "${AUTH_URL}",
+  // Authentication (Keycloak OIDC)
+  AUTH_ISSUER:            "${AUTH_ISSUER}",
+  AUTH_CLIENT_ID:         "${AUTH_CLIENT_ID}",
+  AUTH_REDIRECT_URI:      "${AUTH_REDIRECT_URI}",
+  AUTH_POST_LOGOUT_URI:   "${AUTH_POST_LOGOUT_URI}",
+  AUTH_SCOPES:            "${AUTH_SCOPES}",
 
   // n8n webhook base
-  API_BASE_URL:         "${API_BASE_URL}",
+  API_BASE_URL:           "${API_BASE_URL}",
 
   // Webhook paths (appended to API_BASE_URL)
-  WEBHOOK_TASKS:        "${WEBHOOK_TASKS}",
-  WEBHOOK_FOLDERS:      "${WEBHOOK_FOLDERS}",
-  WEBHOOK_FILES:        "${WEBHOOK_FILES}",
-  WEBHOOK_SERVE_FILE:   "${WEBHOOK_SERVE_FILE}",
-  WEBHOOK_FILE_DELETE:  "${WEBHOOK_FILE_DELETE}",
+  WEBHOOK_TASKS:          "${WEBHOOK_TASKS}",
+  WEBHOOK_FOLDERS:        "${WEBHOOK_FOLDERS}",
+  WEBHOOK_FILES:          "${WEBHOOK_FILES}",
+  WEBHOOK_SERVE_FILE:     "${WEBHOOK_SERVE_FILE}",
+  WEBHOOK_FILE_DELETE:    "${WEBHOOK_FILE_DELETE}",
 
   // Upload form (full URL — different base)
-  WEBHOOK_UPLOAD_FORM:  "${WEBHOOK_UPLOAD_FORM}",
+  WEBHOOK_UPLOAD_FORM:    "${WEBHOOK_UPLOAD_FORM}",
 });

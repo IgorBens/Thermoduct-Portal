@@ -221,7 +221,7 @@ const TaskList = (() => {
     const listEl   = document.getElementById("taskList");
     const statusEl = document.getElementById("taskStatus");
 
-    if (!Auth.isLoggedIn()) {
+    if (!Auth.isAuthenticated()) {
       statusEl.textContent = "Log eerst in.";
       return;
     }

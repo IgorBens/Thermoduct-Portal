@@ -1,66 +1,230 @@
-// ===== AUTHENTICATION (JWT via Keychain) =====
+// ===== AUTHENTICATION — Keycloak OIDC with PKCE =====
+//
+// Uses the PKCE (Proof Key for Code Exchange) flow — the only
+// secure way to do OIDC from a plain JS app with no backend.
+// No client secret is needed or used. Security comes from:
+//   1. PKCE — prevents auth code interception
+//   2. HTTPS — protects all traffic
+//   3. sessionStorage — tokens cleared when tab closes
 //
 // Flow:
-//   1. POST { username, password } → AUTH_URL
-//   2. Keychain returns { token: "jwt…", user: { id, name, role } }
-//   3. Token stored in localStorage, sent as Bearer header on every API call
-//   4. Role determines which views/tabs the user can see
+//   1. Auth.login() → redirect to Keycloak login page
+//   2. Keycloak redirects to /callback.html with auth code
+//   3. Auth.handleCallback() → exchanges code for tokens (PKCE)
+//   4. Tokens stored in sessionStorage
+//   5. Api module sends access_token as Bearer header
+//   6. Roles come from the access_token JWT payload
 //
-// Expected roles: "installer", "admin", "projectleider"
-// Default role (if not returned): "installer"
+// All config comes from CONFIG (generated from .env).
 
-const Auth = (() => {
-  const TOKEN_KEY = "auth_token";
-  const USER_KEY  = "auth_user";
+// ── Token storage ──
+// sessionStorage is per-tab and cleared when the tab closes.
+// Keycloak's SSO cookie makes re-auth seamless — no login prompt.
+const Storage = {
+  set:    (key, value) => sessionStorage.setItem(key, value),
+  get:    (key)        => sessionStorage.getItem(key),
+  remove: (key)        => sessionStorage.removeItem(key),
+  clear:  ()           => {
+    ["access_token", "id_token", "refresh_token",
+     "code_verifier", "auth_state"].forEach(k => sessionStorage.removeItem(k));
+  },
+};
 
-  return {
-    getToken() {
-      return localStorage.getItem(TOKEN_KEY);
-    },
+// ── PKCE helpers ──
+// Generate random string for code_verifier and state.
+function generateRandomString(length) {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+  const array = new Uint8Array(length);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => chars[byte % chars.length]).join("");
+}
 
-    getUser() {
-      try { return JSON.parse(localStorage.getItem(USER_KEY)); }
-      catch { return null; }
-    },
+// SHA-256 hash the verifier into a code_challenge (base64url encoded).
+async function generateCodeChallenge(verifier) {
+  const data   = new TextEncoder().encode(verifier);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=/g,  "");
+}
 
-    getRole() {
-      return this.getUser()?.role || "installer";
-    },
+// ── JWT parsing ──
+// Decode the payload of a JWT (header.payload.signature).
+// We don't verify the signature — the token came directly from
+// Keycloak over HTTPS, so we trust it.
+function parseJwt(token) {
+  try {
+    const base64 = token.split(".")[1]
+      .replace(/-/g, "+")
+      .replace(/_/g, "/");
+    return JSON.parse(atob(base64));
+  } catch {
+    return null;
+  }
+}
 
-    isLoggedIn() {
-      return !!this.getToken();
-    },
+// ── Auth object ──
+const Auth = {
+  // Cache the OIDC discovery document (fetched once per page load).
+  _endpoints: null,
 
-    async login(username, password) {
-      const res = await fetch(CONFIG.AUTH_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Accept": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
+  async getEndpoints() {
+    if (this._endpoints) return this._endpoints;
+    const res = await fetch(`${CONFIG.AUTH_ISSUER}/.well-known/openid-configuration`);
+    if (!res.ok) throw new Error("Kan Keycloak niet bereiken");
+    this._endpoints = await res.json();
+    return this._endpoints;
+  },
 
-      const data = await res.json();
+  // ── login() ──
+  // Generates PKCE pair and redirects to Keycloak's login page.
+  async login() {
+    const endpoints = await this.getEndpoints();
 
-      if (!res.ok) {
-        throw new Error(data.message || "Login mislukt");
-      }
+    const verifier  = generateRandomString(64);
+    const challenge = await generateCodeChallenge(verifier);
+    Storage.set("code_verifier", verifier);
 
-      if (!data.token) {
-        throw new Error("Geen token ontvangen van server");
-      }
+    const state = generateRandomString(16);
+    Storage.set("auth_state", state);
 
-      localStorage.setItem(TOKEN_KEY, data.token);
-      localStorage.setItem(USER_KEY, JSON.stringify(data.user || { name: username }));
-      return data;
-    },
+    const params = new URLSearchParams({
+      response_type:         "code",
+      client_id:             CONFIG.AUTH_CLIENT_ID,
+      redirect_uri:          CONFIG.AUTH_REDIRECT_URI,
+      scope:                 CONFIG.AUTH_SCOPES,
+      state:                 state,
+      code_challenge:        challenge,
+      code_challenge_method: "S256",
+    });
 
-    logout() {
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(USER_KEY);
-    },
+    window.location.href = `${endpoints.authorization_endpoint}?${params}`;
+  },
 
-    authHeader() {
-      const token = this.getToken();
-      return token ? `Bearer ${token}` : "";
-    },
-  };
-})();
+  // ── handleCallback() ──
+  // Called from callback.html after Keycloak redirects back.
+  async handleCallback() {
+    const params        = new URLSearchParams(window.location.search);
+    const code          = params.get("code");
+    const returnedState = params.get("state");
+    const error         = params.get("error");
+
+    if (error) {
+      console.error("Keycloak error:", params.get("error_description"));
+      window.location.href = "/index.html";
+      return;
+    }
+
+    const savedState = Storage.get("auth_state");
+    if (!code || returnedState !== savedState) {
+      console.error("State mismatch — possible CSRF, aborting");
+      window.location.href = "/index.html";
+      return;
+    }
+
+    const verifier  = Storage.get("code_verifier");
+    const endpoints = await this.getEndpoints();
+
+    const response = await fetch(endpoints.token_endpoint, {
+      method:  "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body:    new URLSearchParams({
+        grant_type:    "authorization_code",
+        client_id:     CONFIG.AUTH_CLIENT_ID,
+        redirect_uri:  CONFIG.AUTH_REDIRECT_URI,
+        code:          code,
+        code_verifier: verifier,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("Token exchange failed:", await response.text());
+      window.location.href = "/index.html";
+      return;
+    }
+
+    const tokens = response.json ? await response.json() : {};
+
+    Storage.set("access_token",  tokens.access_token);
+    Storage.set("id_token",      tokens.id_token);
+    if (tokens.refresh_token) {
+      Storage.set("refresh_token", tokens.refresh_token);
+    }
+
+    // Clean up PKCE state
+    Storage.remove("code_verifier");
+    Storage.remove("auth_state");
+
+    // Go to the main app
+    window.location.href = "/index.html";
+  },
+
+  // ── isAuthenticated() ──
+  // True if we have a valid, non-expired access token.
+  isAuthenticated() {
+    const token = Storage.get("access_token");
+    if (!token) return false;
+    const payload = parseJwt(token);
+    if (!payload) return false;
+    if (payload.exp * 1000 < Date.now()) {
+      Storage.clear();
+      return false;
+    }
+    return true;
+  },
+
+  // ── getUser() ──
+  // Returns user profile from the id_token.
+  // Fields: name, preferred_username, email, sub (user ID)
+  getUser() {
+    const token = Storage.get("id_token");
+    if (!token) return null;
+    return parseJwt(token);
+  },
+
+  // ── getRoles() ──
+  // Returns realm roles from the access_token.
+  // e.g. ["installer"] or ["admin", "installer"]
+  getRoles() {
+    const token = Storage.get("access_token");
+    if (!token) return [];
+    const payload = parseJwt(token);
+    return payload?.roles ?? [];
+  },
+
+  // ── hasRole() ──
+  hasRole(role) {
+    return this.getRoles().includes(role);
+  },
+
+  // ── authHeader() ──
+  // Returns the Bearer header value for the Api module.
+  authHeader() {
+    const token = Storage.get("access_token");
+    return token ? `Bearer ${token}` : "";
+  },
+
+  // ── clearSession() ──
+  // Clear local tokens without Keycloak logout redirect.
+  // Used by the Api module on 401 (expired token).
+  clearSession() {
+    Storage.clear();
+  },
+
+  // ── logout() ──
+  // Full logout: clear local tokens + kill Keycloak SSO session.
+  async logout() {
+    const endpoints = await this.getEndpoints();
+    const idToken   = Storage.get("id_token");
+    Storage.clear();
+
+    const params = new URLSearchParams({
+      post_logout_redirect_uri: CONFIG.AUTH_POST_LOGOUT_URI,
+      id_token_hint:            idToken,
+      client_id:                CONFIG.AUTH_CLIENT_ID,
+    });
+
+    window.location.href = `${endpoints.end_session_endpoint}?${params}`;
+  },
+};

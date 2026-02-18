@@ -1,19 +1,16 @@
 // ===== LOGIN VIEW =====
+// No form — redirects to Keycloak's login page.
+// Keycloak handles username/password, MFA, etc.
 
 (() => {
   const template = `
     <div class="login-wrapper">
       <h1 id="loginTitle"></h1>
       <div class="card">
-        <form id="loginForm">
-          <div class="form-group">
-            <input id="loginUser" placeholder="Gebruikersnaam" autocomplete="username" />
-          </div>
-          <div class="form-group">
-            <input id="loginPass" type="password" placeholder="Wachtwoord" autocomplete="current-password" />
-          </div>
-          <button type="submit" class="btn-block">Inloggen</button>
-        </form>
+        <p style="color:var(--muted);font-size:14px;margin:0 0 16px">
+          Log in om verder te gaan.
+        </p>
+        <button id="loginBtn" class="btn-block">Inloggen</button>
         <div id="loginStatus" class="hint"></div>
       </div>
     </div>
@@ -22,28 +19,18 @@
   function mount() {
     document.getElementById("loginTitle").textContent = CONFIG.APP_TITLE;
 
-    document.getElementById("loginForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
+    document.getElementById("loginBtn").addEventListener("click", async () => {
       const statusEl = document.getElementById("loginStatus");
-      const username = document.getElementById("loginUser").value.trim().toLowerCase();
-      const password = document.getElementById("loginPass").value;
-
-      if (!username || !password) {
-        statusEl.textContent = "Vul gebruikersnaam en wachtwoord in.";
-        return;
-      }
-
-      statusEl.textContent = "Inloggen\u2026";
+      statusEl.textContent = "Doorverwijzen naar login\u2026";
 
       try {
-        await Auth.login(username, password);
-        Router.showView("tasks");
+        await Auth.login(); // redirects to Keycloak
       } catch (err) {
-        statusEl.textContent = err.message || "Login mislukt.";
+        statusEl.textContent = "Kon niet verbinden met authenticatie server.";
+        console.error("[login]", err);
       }
     });
   }
 
-  // No tab — login is not shown in the nav bar
   Router.register("login", { template, mount });
 })();

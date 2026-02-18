@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inloggen...</title>
+  <link rel="stylesheet" href="css/variables.css" />
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/login.css" />
+</head>
+<body>
+
+<div class="app">
+  <div class="login-wrapper">
+    <h1>Even geduld...</h1>
+    <p class="hint" id="callbackStatus">Bezig met inloggen...</p>
+  </div>
+</div>
+
+<!-- Only need config + auth for the callback -->
+<script src="js/core/config.js"></script>
+<script src="js/core/auth.js"></script>
+<script>
+  Auth.handleCallback().catch(err => {
+    document.getElementById("callbackStatus").textContent =
+      "Inloggen mislukt: " + (err.message || err);
+  });
+</script>
+
+</body>
+</html>
