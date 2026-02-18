@@ -3,13 +3,18 @@
 
 const TaskDetailView = (() => {
 
+  let currentProjectId = null;
+
   const template = `
     <button id="backToList" class="secondary" style="margin-bottom:12px">
       &larr; Back to list
     </button>
     <div id="taskDetail"></div>
     <div class="card">
-      <div class="section-title">PDFs</div>
+      <div class="section-title-row">
+        <div class="section-title" style="margin-bottom:0">PDFs</div>
+        <div id="pdfUploadArea"></div>
+      </div>
       <div id="pdfs" class="hint">&mdash;</div>
     </div>
     <div class="card">
@@ -23,6 +28,101 @@ const TaskDetailView = (() => {
       Router.showView("tasks");
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
+
+    // Show upload button only for project leaders
+    if (Auth.hasRole("projectleider")) {
+      renderUploadButton();
+    }
+  }
+
+  // ── Upload button (projectleider only) ──
+
+  function renderUploadButton() {
+    const area = document.getElementById("pdfUploadArea");
+    if (!area) return;
+
+    const btn = document.createElement("button");
+    btn.className = "btn-sm";
+    btn.textContent = "Upload PDF";
+    btn.addEventListener("click", () => triggerUpload());
+    area.appendChild(btn);
+  }
+
+  function triggerUpload() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".pdf";
+    input.addEventListener("change", () => {
+      if (input.files.length > 0) uploadPdf(input.files[0]);
+    });
+    input.click();
+  }
+
+  async function uploadPdf(file) {
+    if (!currentProjectId) {
+      alert("No project linked — cannot upload.");
+      return;
+    }
+
+    const area = document.getElementById("pdfUploadArea");
+    const origHtml = area.innerHTML;
+    area.innerHTML = '<span class="pdf-upload-status">Uploading\u2026</span>';
+
+    try {
+      const base64 = await fileToBase64(file);
+
+      const res = await Api.post(CONFIG.WEBHOOK_PDF_UPLOAD, {
+        project_id: currentProjectId,
+        filename:   file.name,
+        data:       base64,
+      });
+
+      const result = await res.json();
+
+      if (res.ok && result.success !== false) {
+        area.innerHTML = '<span class="pdf-upload-status pdf-upload-ok">Uploaded!</span>';
+        // Refresh PDFs
+        refreshPdfs();
+      } else {
+        area.innerHTML = '<span class="pdf-upload-status pdf-upload-err">Upload failed</span>';
+      }
+    } catch (err) {
+      console.error("[taskDetail] PDF upload error:", err);
+      area.innerHTML = '<span class="pdf-upload-status pdf-upload-err">Upload failed</span>';
+    }
+
+    // Restore upload button after a short delay
+    setTimeout(() => {
+      area.innerHTML = "";
+      if (Auth.hasRole("projectleider")) renderUploadButton();
+    }, 2000);
+  }
+
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        // result is "data:application/pdf;base64,AAAA…" — strip the prefix
+        const base64 = reader.result.split(",")[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function refreshPdfs() {
+    if (!currentProjectId) return;
+    try {
+      const res = await Api.get(`${CONFIG.WEBHOOK_TASKS}/task`, { id: currentProjectId });
+      if (res.ok) {
+        const data = await res.json();
+        const payload = Array.isArray(data) ? data[0] : (data?.data?.[0] || data);
+        renderPdfs(payload?.pdfs || []);
+      }
+    } catch (err) {
+      console.error("[taskDetail] PDF refresh error:", err);
+    }
   }
 
   // ── Render task detail card ──
@@ -164,9 +264,15 @@ const TaskDetailView = (() => {
     });
   }
 
+  // ── Set project ID (called from tasks.js) ──
+
+  function setProjectId(pid) {
+    currentProjectId = pid;
+  }
+
   // ── Register (no tab — accessed via task list, not nav) ──
 
   Router.register("taskDetail", { template, mount });
 
-  return { render, renderPdfs };
+  return { render, renderPdfs, setProjectId };
 })();

@@ -168,6 +168,25 @@
   margin-bottom: 4px;
 }
 
+/* PDF section header row */
+
+.section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.pdf-upload-status {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.pdf-upload-ok { color: var(--success); }
+.pdf-upload-err { color: #c53030; }
+
 /* PDF rows */
 
 .pdf-row {

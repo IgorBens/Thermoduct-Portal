@@ -26,4 +26,7 @@ const CONFIG = Object.freeze({
 
   // Upload form (full URL — different base)
   WEBHOOK_UPLOAD_FORM:    "${WEBHOOK_UPLOAD_FORM}",
+
+  // PDF upload (project leaders only)
+  WEBHOOK_PDF_UPLOAD:     "${WEBHOOK_PDF_UPLOAD}",
 });
