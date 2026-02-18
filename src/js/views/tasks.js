@@ -201,18 +201,8 @@ const TaskList = (() => {
     TaskDetailView.renderPdfs([]);
     Documents.init(task);
 
-    // Fetch full task data (PDFs + project_id for documents)
-    try {
-      const res = await Api.get(`${CONFIG.WEBHOOK_TASKS}/task`, { id: task.id });
-      if (res.ok) {
-        const data = await res.json();
-        const payload = Array.isArray(data) ? data[0] : (data?.data?.[0] || data);
-        TaskDetailView.renderPdfs(payload?.pdfs || []);
-        if (payload?.project_id) Documents.setProjectId(payload.project_id);
-      }
-    } catch (err) {
-      console.error("[tasks] Detail fetch error:", err);
-    }
+    // project_id is already in the task list response
+    if (task.project_id) Documents.setProjectId(task.project_id);
   }
 
   // ── Fetch tasks ──
