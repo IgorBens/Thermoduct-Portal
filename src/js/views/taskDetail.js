@@ -13,6 +13,10 @@ const TaskDetailView = (() => {
       <button id="taskRefreshBtn" class="secondary btn-sm">Refresh</button>
     </div>
     <div id="taskDetail"></div>
+    <div class="card" id="teamCard" style="display:none">
+      <div class="section-title">Ingepland op deze werf</div>
+      <div id="teamList" class="hint">&mdash;</div>
+    </div>
     <div class="card">
       <div class="section-title-row">
         <div class="section-title" style="margin-bottom:0">PDFs</div>
@@ -237,6 +241,7 @@ const TaskDetailView = (() => {
           currentTask = fresh;
           render(fresh);
         }
+        renderTeam(tasks);
       }
 
       // Re-fetch PDFs + docs
@@ -421,6 +426,72 @@ const TaskDetailView = (() => {
     });
   }
 
+  // ── Team / co-workers ──
+
+  // Extract a comparable project ID (handle Odoo Many2one arrays)
+  function getProjectIdValue(task) {
+    return Array.isArray(task.project_id) ? task.project_id[0] : task.project_id;
+  }
+
+  // Extract worker/employee name from a task (Odoo planning slot)
+  function getWorkerName(task) {
+    if (task.employee_name) return task.employee_name;
+    if (task.worker_name) return task.worker_name;
+    if (Array.isArray(task.resource_id) && task.resource_id[1]) return task.resource_id[1];
+    if (Array.isArray(task.employee_id) && task.employee_id[1]) return task.employee_id[1];
+    if (Array.isArray(task.user_id) && task.user_id[1]) return task.user_id[1];
+    if (typeof task.resource_id === "string" && task.resource_id) return task.resource_id;
+    if (typeof task.employee_id === "string" && task.employee_id) return task.employee_id;
+    return "";
+  }
+
+  // Render all workers planned on the same project + date
+  function renderTeam(allTasks) {
+    const card = document.getElementById("teamCard");
+    const el = document.getElementById("teamList");
+    if (!el || !card || !currentTask) return;
+
+    const names = new Set();
+
+    // 1) Check for a "workers" field on the task itself (from n8n)
+    const taskWorkers = currentTask.workers || currentTask.team_members || [];
+    taskWorkers.forEach(w => {
+      const name = typeof w === "string" ? w
+        : (w?.name || (Array.isArray(w) ? w[1] : ""));
+      if (name) names.add(name);
+    });
+
+    // 2) Find co-tasks in the full task list (same project + same date)
+    if (allTasks && allTasks.length > 0) {
+      const pid = getProjectIdValue(currentTask);
+      const date = getTaskDate(currentTask);
+      allTasks.forEach(t => {
+        if (getProjectIdValue(t) === pid && getTaskDate(t) === date) {
+          const name = getWorkerName(t);
+          if (name) names.add(name);
+        }
+      });
+    }
+
+    if (names.size === 0) {
+      card.style.display = "none";
+      return;
+    }
+
+    card.style.display = "";
+    el.className = "team-list";
+    el.innerHTML = "";
+
+    names.forEach(name => {
+      const chip = document.createElement("span");
+      chip.className = "team-chip";
+      // Initials avatar
+      const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+      chip.innerHTML = `<span class="team-chip-avatar">${escapeHtml(initials)}</span>${escapeHtml(name)}`;
+      el.appendChild(chip);
+    });
+  }
+
   // ── Set project ID (called from tasks.js) ──
 
   function setProjectId(pid) {
@@ -431,5 +502,5 @@ const TaskDetailView = (() => {
 
   Router.register("taskDetail", { template, mount });
 
-  return { render, renderPdfs, setLoadingPdfs, setProjectId };
+  return { render, renderPdfs, setLoadingPdfs, setProjectId, renderTeam };
 })();

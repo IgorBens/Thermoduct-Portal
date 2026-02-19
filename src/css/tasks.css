@@ -324,6 +324,40 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* ── Team / co-workers section ── */
+
+.team-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.team-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 6px;
+  background: var(--primary-light);
+  color: var(--text);
+  border-radius: 24px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.team-chip-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
 /* Responsive */
 
 @media (max-width: 600px) {

@@ -215,6 +215,7 @@ const TaskList = (() => {
   async function openTask(task) {
     Router.showView("taskDetail");
     TaskDetailView.render(task);
+    TaskDetailView.renderTeam(allTasks);
     TaskDetailView.setLoadingPdfs();
     Documents.init(task);
 
