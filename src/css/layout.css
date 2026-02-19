@@ -23,14 +23,14 @@
 }
 
 .header-logo {
-  height: 44px;
+  height: 60px;
   width: auto;
   object-fit: contain;
 }
 
 .header-logo-fallback {
-  width: 44px;
-  height: 44px;
+  width: 60px;
+  height: 60px;
   background: var(--primary);
   border-radius: 8px;
   display: flex;
@@ -139,12 +139,12 @@
   }
 
   .header-logo {
-    height: 36px;
+    height: 48px;
   }
 
   .header-logo-fallback {
-    width: 36px;
-    height: 36px;
+    width: 48px;
+    height: 48px;
   }
 
   #appHeader h1 {
