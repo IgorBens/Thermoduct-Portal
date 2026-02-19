@@ -15,6 +15,8 @@ const TaskDetailView = (() => {
         <div class="section-title" style="margin-bottom:0">PDFs</div>
         <div id="pdfUploadArea"></div>
       </div>
+      <div id="pdfDropzone"></div>
+      <div id="pdfUploadProgress"></div>
       <div id="pdfs" class="hint">&mdash;</div>
     </div>
     <div class="card">
@@ -29,33 +31,114 @@ const TaskDetailView = (() => {
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
 
-    // Show upload button only for project leaders
+    // Show dropzone only for project leaders
     if (Auth.hasRole("projectleider")) {
-      renderUploadButton();
+      renderDropzone();
     }
   }
 
-  // ── Upload button (projectleider only) ──
+  // ── PDF drag-and-drop zone (projectleider only) ──
 
-  function renderUploadButton() {
-    const area = document.getElementById("pdfUploadArea");
-    if (!area) return;
+  function renderDropzone() {
+    const container = document.getElementById("pdfDropzone");
+    if (!container) return;
 
-    const btn = document.createElement("button");
-    btn.className = "btn-sm";
-    btn.textContent = "Upload PDF";
-    btn.addEventListener("click", () => triggerUpload());
-    area.appendChild(btn);
+    const zone = document.createElement("div");
+    zone.className = "pdf-dropzone";
+    zone.innerHTML = `
+      <div class="pdf-dropzone-content">
+        <div class="pdf-dropzone-icon">&#128196;</div>
+        <div class="pdf-dropzone-text">
+          <strong>Drop PDF files here</strong>
+          <span>or click to browse</span>
+        </div>
+      </div>`;
+
+    // Click to browse
+    zone.addEventListener("click", () => triggerUpload());
+
+    // Drag events
+    zone.addEventListener("dragenter", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      zone.classList.add("pdf-dropzone--active");
+    });
+
+    zone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      zone.classList.add("pdf-dropzone--active");
+    });
+
+    zone.addEventListener("dragleave", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!zone.contains(e.relatedTarget)) {
+        zone.classList.remove("pdf-dropzone--active");
+      }
+    });
+
+    zone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      zone.classList.remove("pdf-dropzone--active");
+
+      const files = Array.from(e.dataTransfer.files);
+      handlePdfFiles(files);
+    });
+
+    container.appendChild(zone);
   }
 
   function triggerUpload() {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = ".pdf";
+    input.multiple = true;
     input.addEventListener("change", () => {
-      if (input.files.length > 0) uploadPdf(input.files[0]);
+      if (input.files.length > 0) handlePdfFiles(Array.from(input.files));
     });
     input.click();
+  }
+
+  // ── File handling & validation ──
+
+  function handlePdfFiles(files) {
+    files.forEach(file => {
+      const ext = file.name.split(".").pop().toLowerCase();
+      if (ext !== "pdf" && file.type !== "application/pdf") {
+        showUploadStatus(file.name, "error", "Not a PDF file");
+        return;
+      }
+      uploadPdf(file);
+    });
+  }
+
+  function showUploadStatus(fileName, status, message) {
+    const container = document.getElementById("pdfUploadProgress");
+    if (!container) return null;
+
+    const row = document.createElement("div");
+    row.className = `pdf-upload-row pdf-upload-row--${status}`;
+
+    const name = document.createElement("span");
+    name.className = "pdf-upload-row-name";
+    name.textContent = fileName;
+    name.title = fileName;
+    row.appendChild(name);
+
+    const msg = document.createElement("span");
+    msg.className = "pdf-upload-row-status";
+    msg.textContent = message || status;
+    row.appendChild(msg);
+
+    container.appendChild(row);
+
+    if (status === "success" || status === "error") {
+      setTimeout(() => row.remove(), 4000);
+    }
+
+    return row;
   }
 
   async function uploadPdf(file) {
@@ -64,9 +147,7 @@ const TaskDetailView = (() => {
       return;
     }
 
-    const area = document.getElementById("pdfUploadArea");
-    const origHtml = area.innerHTML;
-    area.innerHTML = '<span class="pdf-upload-status">Uploading\u2026</span>';
+    const row = showUploadStatus(file.name, "uploading", "Uploading\u2026");
 
     try {
       const base64 = await fileToBase64(file);
@@ -79,23 +160,19 @@ const TaskDetailView = (() => {
 
       const result = await res.json();
 
+      if (row) row.remove();
+
       if (res.ok && result.success !== false) {
-        area.innerHTML = '<span class="pdf-upload-status pdf-upload-ok">Uploaded!</span>';
-        // Refresh PDFs
+        showUploadStatus(file.name, "success", "Uploaded!");
         refreshPdfs();
       } else {
-        area.innerHTML = '<span class="pdf-upload-status pdf-upload-err">Upload failed</span>';
+        showUploadStatus(file.name, "error", result.message || "Upload failed");
       }
     } catch (err) {
       console.error("[taskDetail] PDF upload error:", err);
-      area.innerHTML = '<span class="pdf-upload-status pdf-upload-err">Upload failed</span>';
+      if (row) row.remove();
+      showUploadStatus(file.name, "error", "Network error");
     }
-
-    // Restore upload button after a short delay
-    setTimeout(() => {
-      area.innerHTML = "";
-      if (Auth.hasRole("projectleider")) renderUploadButton();
-    }, 2000);
   }
 
   function fileToBase64(file) {

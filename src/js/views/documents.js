@@ -1,4 +1,4 @@
-// ===== DOCUMENTS (Folder Tree + Drag-and-Drop Upload) =====
+// ===== DOCUMENTS (Folder Tree + Photo Upload) =====
 //
 // Component used within the taskDetail view.
 // Folder structure from n8n: Gebouw > Verdiep > Collector
@@ -8,10 +8,6 @@
 const Documents = (() => {
   let projectId = null;
   const cache = {};
-
-  const ACCEPTED_TYPES = ".jpg,.jpeg,.png,.webp,.heic,.gif,.bmp";
-  const ACCEPTED_MIME  = ["image/jpeg","image/png","image/webp","image/heic","image/gif","image/bmp"];
-  const MAX_FILE_SIZE  = 20 * 1024 * 1024; // 20 MB
 
   // ── Tree rendering ──
 
@@ -105,10 +101,9 @@ const Documents = (() => {
         <button class="doc-upload-btn" title="Upload photos">&#128247; Upload</button>
       </div>`;
 
-    // Upload button triggers file picker
     header.querySelector(".doc-upload-btn").addEventListener("click", (e) => {
       e.stopPropagation();
-      triggerFilePicker(folderPath);
+      openUploadForm(folderPath);
     });
 
     header.addEventListener("click", () => {
@@ -123,16 +118,6 @@ const Documents = (() => {
     const body = document.createElement("div");
     body.className = "doc-collector-body";
 
-    // Drag-and-drop zone
-    const dropzone = buildDropzone(folderPath);
-    body.appendChild(dropzone);
-
-    // Upload progress area
-    const progress = document.createElement("div");
-    progress.className = "doc-upload-progress";
-    progress.dataset.folderPath = folderPath;
-    body.appendChild(progress);
-
     const filesList = document.createElement("div");
     filesList.className = "doc-files-list";
     filesList.innerHTML = '<p class="doc-loading" style="color:#868e96">Click to load files.</p>';
@@ -140,180 +125,6 @@ const Documents = (() => {
 
     el.appendChild(body);
     return el;
-  }
-
-  // ── Drag-and-drop zone ──
-
-  function buildDropzone(folderPath) {
-    const zone = document.createElement("div");
-    zone.className = "doc-dropzone";
-    zone.dataset.folderPath = folderPath;
-
-    zone.innerHTML = `
-      <div class="doc-dropzone-content">
-        <div class="doc-dropzone-icon">&#128247;</div>
-        <div class="doc-dropzone-text">
-          <strong>Drop photos here</strong>
-          <span>or click to browse</span>
-        </div>
-      </div>`;
-
-    // Click to browse
-    zone.addEventListener("click", () => triggerFilePicker(folderPath));
-
-    // Drag events
-    zone.addEventListener("dragenter", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      zone.classList.add("doc-dropzone--active");
-    });
-
-    zone.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      zone.classList.add("doc-dropzone--active");
-    });
-
-    zone.addEventListener("dragleave", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      // Only remove highlight if we're leaving the dropzone entirely
-      if (!zone.contains(e.relatedTarget)) {
-        zone.classList.remove("doc-dropzone--active");
-      }
-    });
-
-    zone.addEventListener("drop", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      zone.classList.remove("doc-dropzone--active");
-
-      const files = Array.from(e.dataTransfer.files);
-      if (files.length > 0) {
-        handleFiles(files, folderPath);
-      }
-    });
-
-    return zone;
-  }
-
-  function triggerFilePicker(folderPath) {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ACCEPTED_TYPES;
-    input.multiple = true;
-    input.addEventListener("change", () => {
-      if (input.files.length > 0) {
-        handleFiles(Array.from(input.files), folderPath);
-      }
-    });
-    input.click();
-  }
-
-  // ── File upload handling ──
-
-  function handleFiles(files, folderPath) {
-    const validFiles = files.filter(f => {
-      if (f.size > MAX_FILE_SIZE) {
-        showUploadStatus(folderPath, f.name, "error", `Too large (max ${MAX_FILE_SIZE / 1024 / 1024} MB)`);
-        return false;
-      }
-      // Check by extension since HEIC might not have a standard MIME type
-      const ext = f.name.split(".").pop().toLowerCase();
-      const validExts = ["jpg","jpeg","png","webp","heic","gif","bmp"];
-      if (!validExts.includes(ext) && !ACCEPTED_MIME.includes(f.type)) {
-        showUploadStatus(folderPath, f.name, "error", "Unsupported file type");
-        return false;
-      }
-      return true;
-    });
-
-    validFiles.forEach(f => uploadFile(f, folderPath));
-  }
-
-  function showUploadStatus(folderPath, fileName, status, message) {
-    const container = document.querySelector(`.doc-upload-progress[data-folder-path="${CSS.escape(folderPath)}"]`);
-    if (!container) return;
-
-    const row = document.createElement("div");
-    row.className = `doc-upload-row doc-upload-row--${status}`;
-
-    const name = document.createElement("span");
-    name.className = "doc-upload-row-name";
-    name.textContent = fileName;
-    name.title = fileName;
-    row.appendChild(name);
-
-    const msg = document.createElement("span");
-    msg.className = "doc-upload-row-status";
-    msg.textContent = message || status;
-    row.appendChild(msg);
-
-    container.appendChild(row);
-
-    // Auto-remove success/error messages after a delay
-    if (status === "success" || status === "error") {
-      setTimeout(() => row.remove(), 4000);
-    }
-
-    return row;
-  }
-
-  async function uploadFile(file, folderPath) {
-    if (!projectId) return;
-
-    const row = showUploadStatus(folderPath, file.name, "uploading", "Uploading...");
-
-    try {
-      const base64 = await fileToBase64(file);
-
-      const res = await Api.post(CONFIG.WEBHOOK_FILE_UPLOAD, {
-        project_id: projectId,
-        folder_path: folderPath,
-        filename: file.name,
-        data: base64,
-      });
-
-      const result = await res.json();
-
-      if (row) row.remove();
-
-      if (res.ok && result.success !== false) {
-        showUploadStatus(folderPath, file.name, "success", "Uploaded!");
-        // Refresh file list for this collector
-        refreshCollector(folderPath);
-      } else {
-        showUploadStatus(folderPath, file.name, "error", result.message || "Upload failed");
-      }
-    } catch (err) {
-      console.error("[documents] Upload error:", err);
-      if (row) row.remove();
-      showUploadStatus(folderPath, file.name, "error", "Network error");
-    }
-  }
-
-  function fileToBase64(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = reader.result.split(",")[1];
-        resolve(base64);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
-
-  function refreshCollector(folderPath) {
-    delete cache[folderPath];
-    const header = document.querySelector(`.doc-collector-header[data-folder-path="${CSS.escape(folderPath)}"]`);
-    if (header) {
-      const body = header.nextElementSibling;
-      if (body) {
-        const filesList = body.querySelector(".doc-files-list");
-        if (filesList) loadFiles(folderPath, filesList);
-      }
-    }
   }
 
   // ── Collapse / expand ──
@@ -408,7 +219,21 @@ const Documents = (() => {
     });
   }
 
-  // ── Upload (legacy popup — kept as fallback) ──
+  // ── Upload ──
+
+  function openUploadForm(folderPath) {
+    const url = `${CONFIG.WEBHOOK_UPLOAD_FORM}?project_id=${encodeURIComponent(projectId)}&folder_path=${encodeURIComponent(folderPath)}`;
+    const popup = window.open(url, "_blank", "width=500,height=400");
+
+    if (popup) {
+      const timer = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(timer);
+          refreshOpenCollectors();
+        }
+      }, 500);
+    }
+  }
 
   function refreshOpenCollectors() {
     document.querySelectorAll(".doc-collector-header").forEach(header => {

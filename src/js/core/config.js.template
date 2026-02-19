@@ -24,11 +24,8 @@ const CONFIG = Object.freeze({
   WEBHOOK_SERVE_FILE:     "${WEBHOOK_SERVE_FILE}",
   WEBHOOK_FILE_DELETE:    "${WEBHOOK_FILE_DELETE}",
 
-  // Upload form (full URL — different base) — legacy
+  // Upload form (full URL — different base)
   WEBHOOK_UPLOAD_FORM:    "${WEBHOOK_UPLOAD_FORM}",
-
-  // File upload (inline drag-and-drop)
-  WEBHOOK_FILE_UPLOAD:    "${WEBHOOK_FILE_UPLOAD}",
 
   // PDF upload (project leaders only)
   WEBHOOK_PDF_UPLOAD:     "${WEBHOOK_PDF_UPLOAD}",
