@@ -210,18 +210,27 @@ const TaskDetailView = (() => {
 
   async function refreshPdfs() {
     if (!currentProjectId) return;
+
+    const btn = document.getElementById("pdfRefreshBtn");
+    if (btn) { btn.disabled = true; btn.textContent = "Refreshing\u2026"; }
+
     try {
       const res = await Api.get(`${CONFIG.WEBHOOK_TASKS}/task`, { id: currentProjectId });
-      if (!res.ok) return;
-
       const text = await res.text();
+      console.log("[taskDetail] refreshPdfs status:", res.status, "body:", text.substring(0, 200));
+
       let data;
-      try { data = JSON.parse(text); } catch { return; }
+      try { data = JSON.parse(text); } catch {
+        console.warn("[taskDetail] refreshPdfs: response is not JSON");
+        return;
+      }
 
       const payload = Array.isArray(data) ? data[0] : (data?.data?.[0] || data);
       renderPdfs(payload?.pdfs || []);
     } catch (err) {
       console.error("[taskDetail] PDF refresh error:", err);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = "Refresh"; }
     }
   }
 
