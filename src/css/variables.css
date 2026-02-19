@@ -1,13 +1,20 @@
 :root {
-  --primary: #1a365d;
-  --bg: #f7fafc;
-  --card: #ffffff;
-  --border: #e2e8f0;
-  --text: #1a202c;
-  --muted: #718096;
-  --radius: 12px;
-  --shadow: 0 10px 25px rgba(0,0,0,0.08);
-  --accent: #2b6cb0;
-  --success: #276749;
-  --warning: #c05621;
+  /* ── Thermoduct brand palette ── */
+  --primary: #1B6B3A;           /* Deep green – main brand color */
+  --primary-dark: #145230;      /* Darker green for hover states */
+  --primary-light: #e8f5ec;     /* Very light green tint */
+  --bg: #f5f7f5;                /* Warm light gray-green background */
+  --card: #ffffff;              /* White cards */
+  --border: #d4ddd6;            /* Soft green-tinted border */
+  --text: #1a2e1f;              /* Dark green-black text */
+  --muted: #5f7a65;             /* Muted green-gray for secondary text */
+  --radius: 10px;               /* Border radius */
+  --shadow: 0 4px 16px rgba(27,107,58,0.08); /* Subtle green-tinted shadow */
+  --accent: #2E8B57;            /* Sea green – secondary accent */
+  --accent-light: #e6f4ec;      /* Light accent tint */
+  --success: #1B6B3A;           /* Green for success (matches primary) */
+  --warning: #c17a1a;           /* Warm amber for warnings */
+  --danger: #b83232;            /* Red for errors/danger */
+  --header-bg: #ffffff;         /* Header background */
+  --header-border: #1B6B3A;     /* Green bottom border on header */
 }

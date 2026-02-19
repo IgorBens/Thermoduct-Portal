@@ -5,12 +5,16 @@
 (() => {
   const template = `
     <div class="login-wrapper">
+      <img src="img/logo.png" alt="Thermoduct" class="login-logo"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex';" />
+      <div class="login-logo-fallback" style="display:none;"><span>T</span></div>
       <h1 id="loginTitle"></h1>
+      <p class="login-subtitle">Installateurportaal</p>
       <div class="card">
         <p style="color:var(--muted);font-size:14px;margin:0 0 16px">
-          Log in to continue.
+          Log in om verder te gaan.
         </p>
-        <button id="loginBtn" class="btn-block">Log in</button>
+        <button id="loginBtn" class="btn-block">Inloggen</button>
         <div id="loginStatus" class="hint"></div>
       </div>
     </div>

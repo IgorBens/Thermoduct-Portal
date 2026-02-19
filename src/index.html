@@ -19,7 +19,17 @@
   <!-- Header (shown when logged in, built by router.js) -->
   <header id="appHeader" style="display:none">
     <div class="app-header-row">
-      <h1 id="appTitle">Thermoduct Portal</h1>
+      <div class="header-brand">
+        <!-- Replace src with your actual logo file, e.g. img/thermoduct-logo.png -->
+        <img id="appLogo" src="img/logo.png" alt="Thermoduct" class="header-logo" onerror="this.style.display='none';document.getElementById('appLogoFallback').style.display='flex';" />
+        <div id="appLogoFallback" class="header-logo-fallback" style="display:none;">
+          <span class="logo-icon">T</span>
+        </div>
+        <div class="header-title-group">
+          <h1 id="appTitle">Thermoduct Portal</h1>
+          <span class="header-subtitle">Installateurportaal</span>
+        </div>
+      </div>
       <div id="userInfo"></div>
     </div>
     <nav id="mainNav"></nav>
