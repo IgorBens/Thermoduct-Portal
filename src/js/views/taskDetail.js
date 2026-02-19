@@ -13,6 +13,7 @@ const TaskDetailView = (() => {
     <div class="card">
       <div class="section-title-row">
         <div class="section-title" style="margin-bottom:0">PDFs</div>
+        <button id="pdfRefreshBtn" class="secondary btn-sm">Refresh</button>
         <div id="pdfUploadArea"></div>
       </div>
       <div id="pdfDropzone"></div>
@@ -30,6 +31,9 @@ const TaskDetailView = (() => {
       Router.showView("tasks");
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
+
+    // PDF refresh button
+    document.getElementById("pdfRefreshBtn").addEventListener("click", () => refreshPdfs());
 
     // Show dropzone only for project leaders
     if (Auth.hasRole("projectleider")) {
