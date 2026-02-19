@@ -10,7 +10,7 @@
 }
 
 .task-card:hover {
-  box-shadow: 0 4px 12px rgba(27,107,58,0.1);
+  box-shadow: 0 4px 12px rgba(0,151,167,0.1);
 }
 
 .task-card-header {
@@ -224,17 +224,17 @@
   text-align: center;
   cursor: pointer;
   transition: border-color 0.2s, background 0.2s;
-  background: #fafcfa;
+  background: #F5FAFB;
 }
 
 .pdf-dropzone:hover {
-  border-color: var(--accent);
-  background: #f0f7f2;
+  border-color: var(--primary);
+  background: #E0F7FA;
 }
 
 .pdf-dropzone--active {
   border-color: var(--primary);
-  background: #e8f5ec;
+  background: #B2EBF2;
   border-style: solid;
 }
 
@@ -281,8 +281,8 @@
 }
 
 .pdf-upload-row--uploading {
-  background: #f0f4ff;
-  color: #3b5998;
+  background: #E0F7FA;
+  color: #00838F;
 }
 
 .pdf-upload-row--success {

@@ -41,7 +41,7 @@
   user-select: none;
   transition: background 0.15s;
 }
-.doc-verdiep-header:hover { background: #d5eadb; }
+.doc-verdiep-header:hover { background: #B2EBF2; }
 
 .doc-verdiep-body { display: none; }
 .doc-verdiep-body.open { display: block; }
