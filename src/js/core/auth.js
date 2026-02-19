@@ -18,15 +18,15 @@
 // All config comes from CONFIG (generated from .env).
 
 // ── Token storage ──
-// localStorage persists across tab closes and browser restarts.
-// User stays logged in until the token expires or they log out.
+// sessionStorage is per-tab and cleared when the tab closes.
+// Keycloak's SSO cookie makes re-auth seamless — no login prompt.
 const Storage = {
-  set:    (key, value) => localStorage.setItem(key, value),
-  get:    (key)        => localStorage.getItem(key),
-  remove: (key)        => localStorage.removeItem(key),
+  set:    (key, value) => sessionStorage.setItem(key, value),
+  get:    (key)        => sessionStorage.getItem(key),
+  remove: (key)        => sessionStorage.removeItem(key),
   clear:  ()           => {
     ["access_token", "id_token", "refresh_token",
-     "code_verifier", "auth_state"].forEach(k => localStorage.removeItem(k));
+     "code_verifier", "auth_state"].forEach(k => sessionStorage.removeItem(k));
   },
 };
 
