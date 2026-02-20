@@ -198,7 +198,7 @@ const TaskList = (() => {
     tasks.forEach(t => {
       const leader  = (t.project_leader || "").toLowerCase();
       const workers = (t.workers || []).map(w => w.toLowerCase());
-      if (leader.includes("hendrika") || workers.some(w => w.includes("dries"))) {
+      if (leader.includes("hendrika") || workers.some(w => w.startsWith("dries "))) {
         easykitTasks.push(t);
       } else {
         workerTasks.push(t);
