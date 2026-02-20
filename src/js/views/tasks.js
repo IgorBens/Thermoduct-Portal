@@ -1,28 +1,17 @@
 // ===== TASKS VIEW =====
 // Task list with date filtering. Opens TaskDetailView on click.
 //
-// Performance: Only loads today/tomorrow/day-after on mount.
-// Past tasks are fetched lazily when "Show past" is toggled on.
+// Sends `past_days` param to the API so n8n/Odoo only returns
+// tasks from (today - past_days) → (today + 3). Default is 0
+// (no past). User picks how far back via a dropdown.
 
 const TaskList = (() => {
-  let upcomingTasks = []; // today → day+2
-  let pastTasks     = []; // before today (lazy-loaded)
-  let pastLoaded    = false;
+  let allTasks = [];
 
   // Cached filter state (survives mount/unmount when navigating to detail and back)
   let savedDateFilter    = "";
   let savedLeaderFilter  = "";
-  let savedShowPast      = false;
-
-  // Combined task list for rendering & detail view
-  function getAllTasks() {
-    return pastLoaded ? [...upcomingTasks, ...pastTasks] : upcomingTasks;
-  }
-
-  // YYYY-MM-DD for a Date object
-  function toDateStr(d) {
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  }
+  let savedPastDays      = "0";
 
   const template = `
     <div class="card">
@@ -37,9 +26,12 @@ const TaskList = (() => {
         <select id="leaderFilter" style="display:none">
           <option value="">All project leaders</option>
         </select>
-        <label class="checkbox-label">
-          <input type="checkbox" id="showPastDates" /> Show past
-        </label>
+        <select id="pastDaysFilter">
+          <option value="0">Upcoming only</option>
+          <option value="7">+ last 7 days</option>
+          <option value="14">+ last 14 days</option>
+          <option value="30">+ last 30 days</option>
+        </select>
       </div>
       <div id="taskStatus" class="hint">&mdash;</div>
       <div id="taskList"></div>
@@ -51,7 +43,7 @@ const TaskList = (() => {
   function mount() {
     // Restore filter state
     document.getElementById("dateFilter").value = savedDateFilter;
-    document.getElementById("showPastDates").checked = savedShowPast;
+    document.getElementById("pastDaysFilter").value = savedPastDays;
 
     // Show project leader filter for warehouse (and projectleider/admin — useful when seeing all tasks)
     const leaderEl = document.getElementById("leaderFilter");
@@ -60,55 +52,46 @@ const TaskList = (() => {
       leaderEl.value = savedLeaderFilter;
     }
 
-    // Refresh button — clears both caches and re-fetches
+    // Refresh button
     document.getElementById("tasksRefreshBtn").addEventListener("click", () => {
-      upcomingTasks = [];
-      pastTasks = [];
-      pastLoaded = false;
-      fetchUpcoming();
+      allTasks = [];
+      fetchTasks();
     });
 
     // Bind filter events
     document.getElementById("dateFilter").addEventListener("change", filterAndRender);
     document.getElementById("leaderFilter").addEventListener("change", filterAndRender);
-    document.getElementById("showPastDates").addEventListener("change", async () => {
-      const showPast = document.getElementById("showPastDates").checked;
-      if (showPast && !pastLoaded) {
-        await fetchPast();
-      }
-      const all = getAllTasks();
-      populateDateFilter(all);
-      filterAndRender();
+    document.getElementById("pastDaysFilter").addEventListener("change", () => {
+      // Re-fetch from API with new past_days value
+      allTasks = [];
+      fetchTasks();
     });
 
-    if (upcomingTasks.length > 0) {
+    if (allTasks.length > 0) {
       // Returning from detail view — render from cache, no re-fetch
-      const all = getAllTasks();
-      populateDateFilter(all);
-      populateLeaderFilter(all);
+      populateDateFilter(allTasks);
+      populateLeaderFilter(allTasks);
       filterAndRender();
     } else {
-      fetchUpcoming();
+      fetchTasks();
     }
   }
 
   function unmount() {
     savedDateFilter   = document.getElementById("dateFilter")?.value || "";
     savedLeaderFilter = document.getElementById("leaderFilter")?.value || "";
-    savedShowPast     = document.getElementById("showPastDates")?.checked || false;
+    savedPastDays     = document.getElementById("pastDaysFilter")?.value || "0";
   }
 
   // ── Date filter ──
 
   function populateDateFilter(tasks) {
     const filterEl = document.getElementById("dateFilter");
-    const showPast = document.getElementById("showPastDates").checked;
-    const todayStr = getTodayString();
 
     const dates = new Set();
     tasks.forEach(t => {
       const d = getTaskDate(t);
-      if (d && (showPast || d >= todayStr)) dates.add(d);
+      if (d) dates.add(d);
     });
 
     const prev = filterEl.value;
@@ -145,14 +128,10 @@ const TaskList = (() => {
   function filterAndRender() {
     const selected = document.getElementById("dateFilter").value;
     const leader   = document.getElementById("leaderFilter").value;
-    const showPast = document.getElementById("showPastDates").checked;
-    const todayStr = getTodayString();
 
-    let filtered = getAllTasks();
+    let filtered = allTasks;
     if (selected) {
       filtered = filtered.filter(t => getTaskDate(t) === selected);
-    } else if (!showPast) {
-      filtered = filtered.filter(t => getTaskDate(t) >= todayStr);
     }
     if (leader) {
       filtered = filtered.filter(t => t.project_leader === leader);
@@ -290,7 +269,7 @@ const TaskList = (() => {
   async function openTask(task) {
     Router.showView("taskDetail");
     TaskDetailView.render(task);
-    TaskDetailView.renderTeam(getAllTasks());
+    TaskDetailView.renderTeam(allTasks);
     TaskDetailView.setLoadingPdfs();
     Documents.init(task);
 
@@ -313,20 +292,9 @@ const TaskList = (() => {
     }
   }
 
-  // ── Fetch helpers ──
+  // ── Fetch tasks ──
 
-  function parseTasks(text) {
-    let data = [];
-    try { data = JSON.parse(text); } catch { /* empty */ }
-    if (Array.isArray(data)) return data;
-    if (data?.data && Array.isArray(data.data)) return data.data;
-    if (data?.id !== undefined) return [data];
-    return [];
-  }
-
-  // ── Fetch upcoming tasks (today → day+2) ──
-
-  async function fetchUpcoming() {
+  async function fetchTasks() {
     const listEl   = document.getElementById("taskList");
     const statusEl = document.getElementById("taskStatus");
 
@@ -335,17 +303,15 @@ const TaskList = (() => {
       return;
     }
 
-    statusEl.textContent = "Loading tasks\u2026";
+    const pastDays = document.getElementById("pastDaysFilter")?.value || "0";
+    statusEl.textContent = pastDays === "0"
+      ? "Loading tasks\u2026"
+      : `Loading tasks (+ last ${pastDays} days)\u2026`;
     listEl.innerHTML = "";
 
     try {
-      const today = new Date();
-      const dayAfter = new Date(today);
-      dayAfter.setDate(today.getDate() + 2);
-
       const res = await Api.get(`${CONFIG.WEBHOOK_TASKS}/tasks`, {
-        from_date: toDateStr(today),
-        to_date:   toDateStr(dayAfter),
+        past_days: pastDays,
       });
       const text = await res.text();
 
@@ -354,44 +320,22 @@ const TaskList = (() => {
         return;
       }
 
-      upcomingTasks = parseTasks(text);
-      const all = getAllTasks();
-      populateDateFilter(all);
-      populateLeaderFilter(all);
+      let data = [];
+      try { data = JSON.parse(text); } catch { /* empty */ }
+
+      let tasks;
+      if (Array.isArray(data)) tasks = data;
+      else if (data?.data && Array.isArray(data.data)) tasks = data.data;
+      else if (data?.id !== undefined) tasks = [data];
+      else tasks = [];
+
+      allTasks = tasks;
+      populateDateFilter(tasks);
+      populateLeaderFilter(tasks);
       filterAndRender();
     } catch (err) {
       console.error("[tasks] Network error:", err);
       statusEl.innerHTML = '<span class="error">Network error</span>';
-    }
-  }
-
-  // ── Fetch past tasks (before today) — called lazily ──
-
-  async function fetchPast() {
-    const statusEl = document.getElementById("taskStatus");
-    statusEl.textContent = "Loading past tasks\u2026";
-
-    try {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-
-      const res = await Api.get(`${CONFIG.WEBHOOK_TASKS}/tasks`, {
-        to_date: toDateStr(yesterday),
-      });
-      const text = await res.text();
-
-      if (!res.ok) {
-        console.warn("[tasks] Past tasks fetch failed:", res.status);
-        return;
-      }
-
-      pastTasks = parseTasks(text);
-      pastLoaded = true;
-
-      const all = getAllTasks();
-      populateLeaderFilter(all);
-    } catch (err) {
-      console.error("[tasks] Past tasks network error:", err);
     }
   }
 
@@ -405,5 +349,5 @@ const TaskList = (() => {
   });
 
   // Export for external use (e.g. Router could call fetch on refresh)
-  return { fetch: fetchUpcoming };
+  return { fetch: fetchTasks };
 })();
