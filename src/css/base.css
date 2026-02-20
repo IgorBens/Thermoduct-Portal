@@ -68,26 +68,42 @@ input {
   flex: 1;
   min-width: 160px;
   padding: 12px 14px;
-  border-radius: 10px;
+  border-radius: var(--radius);
   border: 1px solid var(--border);
   font-size: 15px;
   outline: none;
+  transition: border-color 0.15s;
+}
+
+input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(0,151,167,0.12);
 }
 
 button {
   padding: 12px 18px;
-  border-radius: 10px;
+  border-radius: var(--radius);
   border: none;
   background: var(--primary);
   color: white;
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+button:hover {
+  background: var(--primary-dark);
+  box-shadow: 0 2px 8px rgba(0,151,167,0.2);
 }
 
 button.secondary {
-  background: #e2e8f0;
-  color: #1a202c;
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+button.secondary:hover {
+  background: #B2EBF2;
 }
 
 button.btn-sm {
@@ -107,6 +123,12 @@ select {
   background: white;
 }
 
+select:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0,151,167,0.12);
+}
+
 /* ── Utility ── */
 
 .hint {
@@ -122,7 +144,7 @@ select {
 }
 
 .error {
-  color: #b00020;
+  color: var(--danger);
   font-weight: 700;
 }
 
@@ -135,13 +157,13 @@ select {
 }
 
 pre {
-  background: #0f172a;
-  color: #e5e7eb;
+  background: #0D2B30;
+  color: #B2EBF2;
   padding: 14px;
-  border-radius: 12px;
+  border-radius: var(--radius);
   overflow-x: auto;
   font-size: 13px;
   line-height: 1.4;
-  border: 1px solid #1e293b;
+  border: 1px solid #164B52;
   margin: 0;
 }

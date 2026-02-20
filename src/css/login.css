@@ -1,15 +1,49 @@
 .login-wrapper {
   max-width: 400px;
-  margin: 60px auto 0;
+  margin: 40px auto 0;
   text-align: center;
 }
 
+.login-wrapper .login-logo {
+  height: 56px;
+  width: auto;
+  margin-bottom: 12px;
+}
+
+.login-wrapper .login-logo-fallback {
+  width: 64px;
+  height: 64px;
+  background: var(--primary);
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.login-wrapper .login-logo-fallback span {
+  color: #fff;
+  font-size: 30px;
+  font-weight: 800;
+}
+
 .login-wrapper h1 {
+  margin-bottom: 6px;
+}
+
+.login-wrapper .login-subtitle {
+  font-size: 14px;
+  color: var(--muted);
   margin-bottom: 24px;
 }
 
 .login-wrapper .card {
   text-align: left;
+  border-top: 3px solid var(--primary);
+}
+
+.login-wrapper button {
+  margin-top: 8px;
 }
 
 @media (max-width: 600px) {

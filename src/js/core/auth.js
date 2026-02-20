@@ -212,6 +212,68 @@ const Auth = {
     return token ? `Bearer ${token}` : "";
   },
 
+  // ── isTokenExpired() ──
+  // Check if the access token is expired (or will expire within 30s).
+  isTokenExpired() {
+    const token = Storage.get("access_token");
+    if (!token) return true;
+    const payload = parseJwt(token);
+    if (!payload) return true;
+    return payload.exp * 1000 < Date.now() + 30000; // 30s buffer
+  },
+
+  // ── refreshAccessToken() ──
+  // Uses the stored refresh_token to get a new access_token from Keycloak.
+  // Returns true on success, false on failure.
+  _refreshing: null,
+  async refreshAccessToken() {
+    // Deduplicate: if a refresh is already in-flight, wait for it
+    if (this._refreshing) return this._refreshing;
+
+    this._refreshing = (async () => {
+      const refreshToken = Storage.get("refresh_token");
+      if (!refreshToken) return false;
+
+      try {
+        const endpoints = await this.getEndpoints();
+        const res = await fetch(endpoints.token_endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            grant_type:    "refresh_token",
+            client_id:     CONFIG.AUTH_CLIENT_ID,
+            refresh_token: refreshToken,
+          }),
+        });
+
+        if (!res.ok) {
+          console.warn("[auth] Token refresh failed:", res.status);
+          return false;
+        }
+
+        const tokens = await res.json();
+        Storage.set("access_token", tokens.access_token);
+        if (tokens.id_token) Storage.set("id_token", tokens.id_token);
+        if (tokens.refresh_token) Storage.set("refresh_token", tokens.refresh_token);
+        console.log("[auth] Token refreshed successfully");
+        return true;
+      } catch (err) {
+        console.error("[auth] Token refresh error:", err);
+        return false;
+      }
+    })();
+
+    try { return await this._refreshing; }
+    finally { this._refreshing = null; }
+  },
+
+  // ── ensureValidToken() ──
+  // Refreshes the token if it's expired. Returns true if we have a valid token.
+  async ensureValidToken() {
+    if (!this.isTokenExpired()) return true;
+    return this.refreshAccessToken();
+  },
+
   // ── clearSession() ──
   // Clear local tokens without Keycloak logout redirect.
   // Used by the Api module on 401 (expired token).

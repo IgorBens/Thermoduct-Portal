@@ -4,15 +4,22 @@
 const TaskList = (() => {
   let allTasks = [];
   // Cached filter state (survives mount/unmount when navigating to detail and back)
-  let savedDateFilter = "";
-  let savedShowPast   = false;
+  let savedDateFilter    = "";
+  let savedLeaderFilter  = "";
+  let savedShowPast      = false;
 
   const template = `
     <div class="card">
-      <div class="section-title">Tasks</div>
+      <div class="section-title-row">
+        <div class="section-title" style="margin-bottom:0">Tasks</div>
+        <button id="tasksRefreshBtn" class="secondary btn-sm">Refresh</button>
+      </div>
       <div class="filter-row">
         <select id="dateFilter">
           <option value="">All dates</option>
+        </select>
+        <select id="leaderFilter" style="display:none">
+          <option value="">All project leaders</option>
         </select>
         <label class="checkbox-label">
           <input type="checkbox" id="showPastDates" /> Show past
@@ -30,8 +37,22 @@ const TaskList = (() => {
     document.getElementById("dateFilter").value = savedDateFilter;
     document.getElementById("showPastDates").checked = savedShowPast;
 
+    // Show project leader filter for warehouse (and projectleider/admin — useful when seeing all tasks)
+    const leaderEl = document.getElementById("leaderFilter");
+    if (Auth.hasRole("warehouse") || Auth.hasRole("projectleider") || Auth.hasRole("admin")) {
+      leaderEl.style.display = "";
+      leaderEl.value = savedLeaderFilter;
+    }
+
+    // Refresh button
+    document.getElementById("tasksRefreshBtn").addEventListener("click", () => {
+      allTasks = [];
+      fetchTasks();
+    });
+
     // Bind filter events
     document.getElementById("dateFilter").addEventListener("change", filterAndRender);
+    document.getElementById("leaderFilter").addEventListener("change", filterAndRender);
     document.getElementById("showPastDates").addEventListener("change", () => {
       populateDateFilter(allTasks);
       filterAndRender();
@@ -40,6 +61,7 @@ const TaskList = (() => {
     if (allTasks.length > 0) {
       // Returning from detail view — render from cache, no re-fetch
       populateDateFilter(allTasks);
+      populateLeaderFilter(allTasks);
       filterAndRender();
     } else {
       fetchTasks();
@@ -47,8 +69,9 @@ const TaskList = (() => {
   }
 
   function unmount() {
-    savedDateFilter = document.getElementById("dateFilter")?.value || "";
-    savedShowPast   = document.getElementById("showPastDates")?.checked || false;
+    savedDateFilter   = document.getElementById("dateFilter")?.value || "";
+    savedLeaderFilter = document.getElementById("leaderFilter")?.value || "";
+    savedShowPast     = document.getElementById("showPastDates")?.checked || false;
   }
 
   // ── Date filter ──
@@ -75,16 +98,40 @@ const TaskList = (() => {
     filterEl.value = prev;
   }
 
+  function populateLeaderFilter(tasks) {
+    const filterEl = document.getElementById("leaderFilter");
+    if (filterEl.style.display === "none") return;
+
+    const leaders = new Set();
+    tasks.forEach(t => {
+      if (t.project_leader) leaders.add(t.project_leader);
+    });
+
+    const prev = filterEl.value;
+    filterEl.innerHTML = '<option value="">All project leaders</option>';
+    Array.from(leaders).sort().forEach(name => {
+      const opt = document.createElement("option");
+      opt.value = name;
+      opt.textContent = name;
+      filterEl.appendChild(opt);
+    });
+    filterEl.value = prev;
+  }
+
   function filterAndRender() {
     const selected = document.getElementById("dateFilter").value;
+    const leader   = document.getElementById("leaderFilter").value;
     const showPast = document.getElementById("showPastDates").checked;
     const todayStr = getTodayString();
 
     let filtered = allTasks;
     if (selected) {
-      filtered = allTasks.filter(t => getTaskDate(t) === selected);
+      filtered = filtered.filter(t => getTaskDate(t) === selected);
     } else if (!showPast) {
-      filtered = allTasks.filter(t => getTaskDate(t) >= todayStr);
+      filtered = filtered.filter(t => getTaskDate(t) >= todayStr);
+    }
+    if (leader) {
+      filtered = filtered.filter(t => t.project_leader === leader);
     }
 
     render(filtered);
@@ -112,6 +159,14 @@ const TaskList = (() => {
         || (Array.isArray(t.x_studio_afleveradres) ? t.x_studio_afleveradres[1] : "")
         || t.address || "";
 
+      // Derive project name: explicit field, or parse from project_id[1]
+      let projectName = t.project_name || "";
+      if (!projectName && Array.isArray(t.project_id) && t.project_id[1]) {
+        const raw = t.project_id[1];
+        const sep = raw.indexOf(" - S");
+        projectName = sep > 0 ? raw.substring(0, sep) : raw;
+      }
+
       const card = document.createElement("div");
       card.className = "task-card";
 
@@ -122,10 +177,10 @@ const TaskList = (() => {
       const titleSection = document.createElement("div");
       titleSection.className = "task-card-title-section";
 
-      if (t.project_name) {
+      if (projectName) {
         const proj = document.createElement("div");
         proj.className = "task-card-project";
-        proj.textContent = t.project_name;
+        proj.textContent = projectName;
         titleSection.appendChild(proj);
       }
 
@@ -176,6 +231,19 @@ const TaskList = (() => {
         details.appendChild(leader);
       }
 
+      // Workers / installers planned on this task
+      const workers = t.workers || [];
+      if (workers.length > 0) {
+        const row = document.createElement("div");
+        row.className = "task-card-detail";
+        row.innerHTML = '<span class="detail-icon">&#128119;</span>';
+        const list = document.createElement("span");
+        list.className = "task-card-workers";
+        list.textContent = workers.join(", ");
+        row.appendChild(list);
+        details.appendChild(row);
+      }
+
       if (details.children.length > 0) card.appendChild(details);
 
       // Footer
@@ -198,7 +266,8 @@ const TaskList = (() => {
   async function openTask(task) {
     Router.showView("taskDetail");
     TaskDetailView.render(task);
-    TaskDetailView.renderPdfs([]);
+    TaskDetailView.renderTeam(allTasks);
+    TaskDetailView.setLoadingPdfs();
     Documents.init(task);
 
     // project_id is already in the task list response
@@ -254,6 +323,7 @@ const TaskList = (() => {
 
       allTasks = tasks;
       populateDateFilter(tasks);
+      populateLeaderFilter(tasks);
       filterAndRender();
     } catch (err) {
       console.error("[tasks] Network error:", err);

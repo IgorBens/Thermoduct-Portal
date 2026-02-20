@@ -3,7 +3,6 @@
 
 document.addEventListener("DOMContentLoaded", () => {
   document.title = CONFIG.APP_TITLE;
-  document.getElementById("appTitle").textContent = CONFIG.APP_TITLE;
 
   Router.init();
 

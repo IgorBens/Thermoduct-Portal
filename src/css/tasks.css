@@ -6,6 +6,11 @@
   margin-top: 10px;
   background: #fff;
   overflow: hidden;
+  transition: box-shadow 0.15s;
+}
+
+.task-card:hover {
+  box-shadow: 0 4px 12px rgba(0,151,167,0.1);
 }
 
 .task-card-header {
@@ -39,19 +44,19 @@
   font-weight: 600;
   padding: 4px 10px;
   border-radius: 6px;
-  background: #ebf8ff;
+  background: var(--accent-light);
   color: var(--accent);
   white-space: nowrap;
 }
 
 .task-card-date.today {
-  background: #f0fff4;
+  background: var(--primary-light);
   color: var(--success);
 }
 
 .task-card-date.past {
-  background: #fff5f5;
-  color: #c53030;
+  background: #fef2f2;
+  color: var(--danger);
 }
 
 .task-card-details {
@@ -79,6 +84,15 @@
   display: flex;
   justify-content: flex-end;
   padding: 8px 16px 12px;
+}
+
+/* ── Task detail top row (back + refresh) ── */
+
+.detail-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
 }
 
 /* ── Task detail (single task view) ── */
@@ -185,7 +199,7 @@
 }
 
 .pdf-upload-ok { color: var(--success); }
-.pdf-upload-err { color: #c53030; }
+.pdf-upload-err { color: var(--danger); }
 
 /* PDF rows */
 
@@ -196,7 +210,7 @@
   gap: 10px;
   padding: 10px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius);
   margin-top: 8px;
   background: #fff;
 }
@@ -207,6 +221,141 @@
   font-size: 12px;
   color: var(--muted);
   margin-top: 2px;
+}
+
+/* ── PDF drag-and-drop zone ── */
+
+.pdf-dropzone {
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  background: #F5FAFB;
+}
+
+.pdf-dropzone:hover {
+  border-color: var(--primary);
+  background: #E0F7FA;
+}
+
+.pdf-dropzone--active {
+  border-color: var(--primary);
+  background: #B2EBF2;
+  border-style: solid;
+}
+
+.pdf-dropzone-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.pdf-dropzone-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.pdf-dropzone-text {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.pdf-dropzone-text strong {
+  font-size: 14px;
+  color: var(--text);
+}
+
+.pdf-dropzone-text span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ── Upload progress rows ── */
+
+.pdf-upload-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-bottom: 6px;
+  animation: pdf-fade-in 0.2s ease;
+}
+
+.pdf-upload-row--uploading {
+  background: #E0F7FA;
+  color: #00838F;
+}
+
+.pdf-upload-row--success {
+  background: #ecfdf5;
+  color: #166534;
+}
+
+.pdf-upload-row--error {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.pdf-upload-row-name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-right: 8px;
+  font-weight: 600;
+}
+
+.pdf-upload-row-status {
+  flex-shrink: 0;
+  font-size: 12px;
+}
+
+@keyframes pdf-fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Team / co-workers section ── */
+
+.team-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.team-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 6px;
+  background: var(--primary-light);
+  color: var(--text);
+  border-radius: 24px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.team-chip-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
 }
 
 /* Responsive */
@@ -223,5 +372,12 @@
 
   .task-card-date {
     align-self: flex-start;
+  }
+
+  .pdf-dropzone {
+    padding: 14px;
+  }
+  .pdf-dropzone-icon {
+    font-size: 22px;
   }
 }

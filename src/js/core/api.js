@@ -23,19 +23,30 @@ const Api = (() => {
   }
 
   async function request(url, options = {}) {
+    // Proactively refresh the token if it's about to expire
+    await Auth.ensureValidToken();
+
     const headers = {
       "Accept": "application/json",
       "Authorization": Auth.authHeader(),
       ...options.headers,
     };
 
-    const res = await fetch(url, { ...options, headers, cache: "no-store" });
+    let res = await fetch(url, { ...options, headers, cache: "no-store" });
 
-    // Token expired — clear local session and show login
+    // On 401, try refreshing the token once before giving up
     if (res.status === 401) {
-      Auth.clearSession();
-      Router.showView("login");
-      throw new Error("Session expired — please log in again");
+      const refreshed = await Auth.refreshAccessToken();
+      if (refreshed) {
+        headers["Authorization"] = Auth.authHeader();
+        res = await fetch(url, { ...options, headers, cache: "no-store" });
+      }
+
+      if (res.status === 401) {
+        Auth.clearSession();
+        Router.showView("login");
+        throw new Error("Session expired — please log in again");
+      }
     }
 
     return res;

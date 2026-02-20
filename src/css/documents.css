@@ -15,9 +15,10 @@
   font-size: 14px;
   cursor: pointer;
   user-select: none;
+  transition: background 0.15s;
 }
 
-.doc-gebouw-header:hover { opacity: 0.9; }
+.doc-gebouw-header:hover { background: var(--primary-dark); }
 
 .doc-gebouw-body { display: none; }
 .doc-gebouw-body.open { display: block; }
@@ -35,11 +36,12 @@
   font-size: 13px;
   font-weight: 600;
   color: var(--accent);
-  background: #f7fafc;
+  background: var(--primary-light);
   cursor: pointer;
   user-select: none;
+  transition: background 0.15s;
 }
-.doc-verdiep-header:hover { background: #edf2f7; }
+.doc-verdiep-header:hover { background: #B2EBF2; }
 
 .doc-verdiep-body { display: none; }
 .doc-verdiep-body.open { display: block; }
@@ -56,8 +58,9 @@
   font-size: 13px;
   cursor: pointer;
   user-select: none;
+  transition: background 0.15s;
 }
-.doc-collector-header:hover { background: #f0f4f8; }
+.doc-collector-header:hover { background: var(--primary-light); }
 
 .doc-collector-body { display: none; padding: 8px 14px 12px 40px; }
 .doc-collector-body.open { display: block; }
@@ -103,8 +106,9 @@
   font-weight: 600;
   cursor: pointer;
   user-select: none;
+  transition: background 0.15s;
 }
-.doc-upload-btn:hover { opacity: 0.85; }
+.doc-upload-btn:hover { background: var(--primary-dark); }
 
 .doc-files-list {
   display: flex;
@@ -126,7 +130,7 @@
 .doc-file-item--image {
   cursor: pointer;
 }
-.doc-file-item--image:hover { background: #f7fafc; }
+.doc-file-item--image:hover { background: var(--primary-light); }
 
 .doc-file-thumb {
   width: 48px;
@@ -164,7 +168,7 @@
   line-height: 28px;
   text-align: center;
 }
-.doc-file-delete:hover { background: #fff5f5; }
+.doc-file-delete:hover { background: #fef2f2; }
 
 .doc-loading {
   margin: 0;

@@ -91,20 +91,23 @@ const Documents = (() => {
     const header = document.createElement("div");
     header.className = "doc-collector-header";
     header.dataset.folderPath = folderPath;
+    const canUpload = !Auth.hasRole("warehouse");
     header.innerHTML = `
       <div class="doc-header-left">
         <span class="doc-chevron">&#9654;</span>
         <span class="doc-folder-icon">&#128247;</span>
         <strong>${escapeHtml(String(collector.name))}</strong>
       </div>
-      <div class="doc-header-right">
+      ${canUpload ? `<div class="doc-header-right">
         <button class="doc-upload-btn" title="Upload photos">&#128247; Upload</button>
-      </div>`;
+      </div>` : ""}`;
 
-    header.querySelector(".doc-upload-btn").addEventListener("click", (e) => {
-      e.stopPropagation();
-      openUploadForm(folderPath);
-    });
+    if (canUpload) {
+      header.querySelector(".doc-upload-btn").addEventListener("click", (e) => {
+        e.stopPropagation();
+        openUploadForm(folderPath);
+      });
+    }
 
     header.addEventListener("click", () => {
       toggleSection(header);
@@ -205,15 +208,17 @@ const Documents = (() => {
         item.appendChild(sizeSpan);
       }
 
-      const delBtn = document.createElement("button");
-      delBtn.className = "doc-file-delete";
-      delBtn.innerHTML = "&#x1F5D1;";
-      delBtn.title = "Delete";
-      delBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        deleteFile(folderPath, file.name, delBtn);
-      });
-      item.appendChild(delBtn);
+      if (!Auth.hasRole("warehouse")) {
+        const delBtn = document.createElement("button");
+        delBtn.className = "doc-file-delete";
+        delBtn.innerHTML = "&#x1F5D1;";
+        delBtn.title = "Delete";
+        delBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          deleteFile(folderPath, file.name, delBtn);
+        });
+        item.appendChild(delBtn);
+      }
 
       listEl.appendChild(item);
     });
