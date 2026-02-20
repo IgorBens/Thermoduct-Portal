@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.portal.rule=Host(`portal.thermoduct.elementium.be`)"
+      - "traefik.http.routers.portal.rule=Host(`portal.thermoduct.be`)"
       - "traefik.http.routers.portal.entrypoints=websecure"
       - "traefik.http.services.portal.loadbalancer.server.port=80"
 

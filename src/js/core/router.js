@@ -97,8 +97,14 @@ const Router = (() => {
       updateHeader();
     },
 
-    init() {
-      this.showView(Auth.isAuthenticated() ? "tasks" : "login");
+    async init() {
+      if (Auth.isAuthenticated()) {
+        // Token valid or refresh_token available — try refreshing first
+        await Auth.ensureValidToken();
+        this.showView(Auth.isAuthenticated() ? "tasks" : "login");
+      } else {
+        this.showView("login");
+      }
     },
   };
 })();
