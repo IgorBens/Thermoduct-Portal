@@ -5,42 +5,28 @@
 // No client secret is needed or used. Security comes from:
 //   1. PKCE — prevents auth code interception
 //   2. HTTPS — protects all traffic
-//   3. localStorage for tokens (persist), sessionStorage for PKCE (per-tab)
+//   3. sessionStorage — tokens cleared when tab closes
 //
 // Flow:
 //   1. Auth.login() → redirect to Keycloak login page
 //   2. Keycloak redirects to /callback.html with auth code
 //   3. Auth.handleCallback() → exchanges code for tokens (PKCE)
-//   4. Tokens stored in localStorage (survive tab close / refresh)
+//   4. Tokens stored in sessionStorage
 //   5. Api module sends access_token as Bearer header
 //   6. Roles come from the access_token JWT payload
 //
 // All config comes from CONFIG (generated from .env).
 
 // ── Token storage ──
-// Tokens live in localStorage so the user stays logged in across tabs
-// and browser restarts. PKCE values (code_verifier, auth_state) live in
-// sessionStorage — they're short-lived, per-tab, and must not be wiped
-// when we clear expired tokens.
-const PKCE_KEYS  = ["code_verifier", "auth_state"];
-const TOKEN_KEYS = ["access_token", "id_token", "refresh_token"];
-
+// sessionStorage is per-tab and cleared when the tab closes.
+// Keycloak's SSO cookie makes re-auth seamless — no login prompt.
 const Storage = {
-  set(key, value) {
-    if (PKCE_KEYS.includes(key)) sessionStorage.setItem(key, value);
-    else                         localStorage.setItem(key, value);
-  },
-  get(key) {
-    if (PKCE_KEYS.includes(key)) return sessionStorage.getItem(key);
-    else                         return localStorage.getItem(key);
-  },
-  remove(key) {
-    if (PKCE_KEYS.includes(key)) sessionStorage.removeItem(key);
-    else                         localStorage.removeItem(key);
-  },
-  // Only clears tokens — never touches PKCE state mid-flow.
-  clear() {
-    TOKEN_KEYS.forEach(k => localStorage.removeItem(k));
+  set:    (key, value) => sessionStorage.setItem(key, value),
+  get:    (key)        => sessionStorage.getItem(key),
+  remove: (key)        => sessionStorage.removeItem(key),
+  clear:  ()           => {
+    ["access_token", "id_token", "refresh_token",
+     "code_verifier", "auth_state"].forEach(k => sessionStorage.removeItem(k));
   },
 };
 
