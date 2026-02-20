@@ -11,6 +11,14 @@ function isDateInPast(dateStr) {
   return dateStr < getTodayString();
 }
 
+function getNextWorkDay() {
+  const d = new Date();
+  const day = d.getDay(); // 0=Sun … 6=Sat
+  const add = day === 5 ? 3 : day === 6 ? 2 : 1; // Fri→Mon, Sat→Mon, else tomorrow
+  d.setDate(d.getDate() + add);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function getTaskDate(t) {
   if (t.date) return t.date;
   if (t.planned_date_begin) return String(t.planned_date_begin).split(" ")[0];

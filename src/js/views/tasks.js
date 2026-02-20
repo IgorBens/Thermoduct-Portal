@@ -16,6 +16,7 @@ const TaskList = (() => {
   let savedDateFilter    = "";
   let savedLeaderFilter  = "";
   let savedPastDays      = "0";
+  let roleDefaultDate    = null; // next-work-day default for projectleider/warehouse
 
   // ── localStorage cache helpers ──
   const CACHE_KEY = "tasksCache";
@@ -64,6 +65,11 @@ const TaskList = (() => {
   // ── Mount / Unmount ──
 
   function mount() {
+    // For projectleider/warehouse: default to next work day (tomorrow / Monday)
+    if (!savedDateFilter && (Auth.hasRole("projectleider") || Auth.hasRole("warehouse"))) {
+      roleDefaultDate = getNextWorkDay();
+    }
+
     // Restore filter state
     document.getElementById("dateFilter").value = savedDateFilter;
     document.getElementById("pastDaysFilter").value = savedPastDays;
@@ -127,7 +133,14 @@ const TaskList = (() => {
       opt.textContent = formatDateLabel(d);
       filterEl.appendChild(opt);
     });
-    filterEl.value = prev;
+
+    // Apply role-based default on first load, then normal restore
+    if (!prev && roleDefaultDate) {
+      filterEl.value = roleDefaultDate;
+      roleDefaultDate = null;
+    } else {
+      filterEl.value = prev;
+    }
   }
 
   function populateLeaderFilter(tasks) {
