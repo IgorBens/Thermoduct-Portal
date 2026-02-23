@@ -19,7 +19,7 @@ const TaskDetailView = (() => {
     </div>
     <div class="card">
       <div class="section-title-row">
-        <div class="section-title" style="margin-bottom:0">PDFs</div>
+        <div class="section-title" style="margin-bottom:0">Files</div>
         <div id="pdfUploadArea"></div>
       </div>
       <div id="pdfDropzone"></div>
@@ -61,8 +61,8 @@ const TaskDetailView = (() => {
       <div class="pdf-dropzone-content">
         <div class="pdf-dropzone-icon">&#128196;</div>
         <div class="pdf-dropzone-text">
-          <strong>Drop PDF files here</strong>
-          <span>or click to browse</span>
+          <strong>Drop files here</strong>
+          <span>PDF or photos &mdash; click to browse</span>
         </div>
       </div>`;
 
@@ -105,8 +105,10 @@ const TaskDetailView = (() => {
   function triggerUpload() {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = ".pdf";
+    input.accept = ".pdf,.jpg,.jpeg,.png,.heic,.heif";
     input.multiple = true;
+    // capture="environment" lets mobile open the camera directly
+    input.capture = "environment";
     input.addEventListener("change", () => {
       if (input.files.length > 0) handlePdfFiles(Array.from(input.files));
     });
@@ -121,10 +123,13 @@ const TaskDetailView = (() => {
       return;
     }
 
+    const allowedExts = new Set(["pdf", "jpg", "jpeg", "png", "heic", "heif"]);
+    const allowedMime = /^(application\/pdf|image\/(jpeg|png|heic|heif))$/;
+
     const validFiles = files.filter(file => {
       const ext = file.name.split(".").pop().toLowerCase();
-      if (ext !== "pdf" && file.type !== "application/pdf") {
-        showUploadStatus(file.name, "error", "Not a PDF file");
+      if (!allowedExts.has(ext) && !allowedMime.test(file.type)) {
+        showUploadStatus(file.name, "error", "Unsupported file type");
         return false;
       }
       return true;
