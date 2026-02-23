@@ -56,6 +56,40 @@ const Api = (() => {
       }
     }
 
+    // n8n sub-workflows can't set the HTTP status code, so the auth
+    // subflow returns { valid: false, statusCode: 401 } inside a 200.
+    // Peek at the body — if it's an auth rejection, treat it as a 401.
+    if (res.ok) {
+      const clone = res.clone();
+      try {
+        const body = await clone.json();
+        if (body?.valid === false && body?.statusCode === 401) {
+          const refreshed = await Auth.refreshAccessToken();
+          if (refreshed) {
+            headers["Authorization"] = Auth.authHeader();
+            res = await fetch(url, { ...options, headers, cache: "no-store" });
+            // Check again after retry
+            const retryClone = res.clone();
+            try {
+              const retryBody = await retryClone.json();
+              if (retryBody?.valid === false && retryBody?.statusCode === 401) {
+                Auth.clearSession();
+                Router.showView("login");
+                throw new Error("Session expired — please log in again");
+              }
+            } catch (e) { if (e.message?.includes("Session expired")) throw e; }
+          } else {
+            Auth.clearSession();
+            Router.showView("login");
+            throw new Error("Session expired — please log in again");
+          }
+        }
+      } catch (e) {
+        // Not JSON or session expired — let it through
+        if (e.message?.includes("Session expired")) throw e;
+      }
+    }
+
     return res;
   }
 
