@@ -456,6 +456,9 @@ const TaskList = (() => {
 
       writeCache(pastDays, tasks);
     } catch (err) {
+      // Session expired — api.js already redirected to login
+      if (err.message?.includes("Session expired")) return;
+
       console.error("[tasks] Network error:", err);
       if (!cached) statusEl.innerHTML = '<span class="error">Network error</span>';
     }
