@@ -372,11 +372,13 @@ const TaskList = (() => {
     TaskDetailView.renderTeam(allTasks);
     TaskDetailView.setLoadingPdfs();
     Documents.init(task);
+    Collectors.init();
 
     // project_id is already in the task list response
     if (task.project_id) {
       TaskDetailView.setProjectId(task.project_id);
       Documents.setProjectId(task.project_id);
+      Collectors.setProjectId(task.project_id);
 
       // Fetch documents/PDFs by project_id
       try {

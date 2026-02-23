@@ -27,6 +27,10 @@ const TaskDetailView = (() => {
       <div id="pdfs" class="hint">&mdash;</div>
     </div>
     <div class="card">
+      <div class="section-title">Collectoren</div>
+      <div id="collectorContainer" class="hint">Collectoren laden...</div>
+    </div>
+    <div class="card">
       <div class="section-title">Documents</div>
       <div id="docContainer" class="hint">Loading project data...</div>
     </div>
