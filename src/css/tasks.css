@@ -235,6 +235,15 @@
   background: #fff;
 }
 
+.pdf-row-thumb {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 .pdf-name { font-weight: 700; }
 
 .pdf-meta {
