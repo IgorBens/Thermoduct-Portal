@@ -23,8 +23,15 @@ const Api = (() => {
   }
 
   async function request(url, options = {}) {
-    // Proactively refresh the token if it's about to expire
-    await Auth.ensureValidToken();
+    // Proactively refresh the token if it's about to expire.
+    // If refresh fails (e.g. refresh_token also expired), bail out
+    // immediately instead of sending an expired token to the backend.
+    const valid = await Auth.ensureValidToken();
+    if (!valid) {
+      Auth.clearSession();
+      Router.showView("login");
+      throw new Error("Session expired — please log in again");
+    }
 
     const headers = {
       "Accept": "application/json",
