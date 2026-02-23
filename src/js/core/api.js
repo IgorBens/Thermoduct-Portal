@@ -23,8 +23,15 @@ const Api = (() => {
   }
 
   async function request(url, options = {}) {
-    // Proactively refresh the token if it's about to expire
-    await Auth.ensureValidToken();
+    // Proactively refresh the token if it's about to expire.
+    // If refresh fails (e.g. refresh_token also expired), bail out
+    // immediately instead of sending an expired token to the backend.
+    const valid = await Auth.ensureValidToken();
+    if (!valid) {
+      Auth.clearSession();
+      Router.showView("login");
+      throw new Error("Session expired — please log in again");
+    }
 
     const headers = {
       "Accept": "application/json",
@@ -46,6 +53,25 @@ const Api = (() => {
         Auth.clearSession();
         Router.showView("login");
         throw new Error("Session expired — please log in again");
+      }
+    }
+
+    // n8n sub-workflows can't set the HTTP status code, so the auth
+    // subflow returns { valid: false, statusCode: 401 } inside a 200.
+    // n8n may wrap the response in an array, so check both shapes.
+    if (res.ok) {
+      const clone = res.clone();
+      try {
+        const body = await clone.json();
+        // Unwrap: n8n often returns [{ … }] instead of { … }
+        const payload = Array.isArray(body) ? body[0] : body;
+        if (payload?.valid === false) {
+          Auth.clearSession();
+          Router.showView("login");
+          throw new Error("Session expired — please log in again");
+        }
+      } catch (e) {
+        if (e.message?.includes("Session expired")) throw e;
       }
     }
 

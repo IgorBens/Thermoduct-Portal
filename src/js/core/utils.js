@@ -53,26 +53,30 @@ function escapeHtml(str) {
   return el.innerHTML;
 }
 
-// ── PDF helpers ──
+// ── File helpers ──
 
-function base64ToPdfBlob(base64) {
+function base64ToBlob(base64, mimetype) {
   const bytes = atob(String(base64 || "").replace(/\s/g, ""));
   const arr = new Uint8Array(bytes.length);
   for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
-  return new Blob([arr], { type: "application/pdf" });
+  return new Blob([arr], { type: mimetype || "application/octet-stream" });
 }
 
-function downloadPdf(base64, filename) {
-  const url = URL.createObjectURL(base64ToPdfBlob(base64));
-  const a = Object.assign(document.createElement("a"), { href: url, download: filename || "file.pdf" });
+function downloadFile(base64, filename, mimetype) {
+  const url = URL.createObjectURL(base64ToBlob(base64, mimetype));
+  const a = Object.assign(document.createElement("a"), { href: url, download: filename || "file" });
   document.body.appendChild(a);
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
 }
 
-function viewPdf(base64) {
-  const url = URL.createObjectURL(base64ToPdfBlob(base64));
+function viewFile(base64, mimetype) {
+  const url = URL.createObjectURL(base64ToBlob(base64, mimetype));
   window.open(url, "_blank");
   setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+function isImageMime(mimetype) {
+  return /^image\//i.test(mimetype);
 }

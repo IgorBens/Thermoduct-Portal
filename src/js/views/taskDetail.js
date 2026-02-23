@@ -19,7 +19,7 @@ const TaskDetailView = (() => {
     </div>
     <div class="card">
       <div class="section-title-row">
-        <div class="section-title" style="margin-bottom:0">PDFs</div>
+        <div class="section-title" style="margin-bottom:0">Files</div>
         <div id="pdfUploadArea"></div>
       </div>
       <div id="pdfDropzone"></div>
@@ -61,8 +61,8 @@ const TaskDetailView = (() => {
       <div class="pdf-dropzone-content">
         <div class="pdf-dropzone-icon">&#128196;</div>
         <div class="pdf-dropzone-text">
-          <strong>Drop PDF files here</strong>
-          <span>or click to browse</span>
+          <strong>Drop files here</strong>
+          <span>PDF or photos &mdash; click to browse</span>
         </div>
       </div>`;
 
@@ -105,8 +105,10 @@ const TaskDetailView = (() => {
   function triggerUpload() {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = ".pdf";
+    input.accept = ".pdf,.jpg,.jpeg,.png,.heic,.heif";
     input.multiple = true;
+    // capture="environment" lets mobile open the camera directly
+    input.capture = "environment";
     input.addEventListener("change", () => {
       if (input.files.length > 0) handlePdfFiles(Array.from(input.files));
     });
@@ -121,10 +123,13 @@ const TaskDetailView = (() => {
       return;
     }
 
+    const allowedExts = new Set(["pdf", "jpg", "jpeg", "png", "heic", "heif"]);
+    const allowedMime = /^(application\/pdf|image\/(jpeg|png|heic|heif))$/;
+
     const validFiles = files.filter(file => {
       const ext = file.name.split(".").pop().toLowerCase();
-      if (ext !== "pdf" && file.type !== "application/pdf") {
-        showUploadStatus(file.name, "error", "Not a PDF file");
+      if (!allowedExts.has(ext) && !allowedMime.test(file.type)) {
+        showUploadStatus(file.name, "error", "Unsupported file type");
         return false;
       }
       return true;
@@ -284,7 +289,7 @@ const TaskDetailView = (() => {
     const el = document.getElementById("pdfs");
     if (!el) return;
     el.className = "hint";
-    el.textContent = "Loading PDFs\u2026";
+    el.textContent = "Loading files\u2026";
   }
 
   // ── Render task detail card ──
@@ -382,17 +387,29 @@ const TaskDetailView = (() => {
 
     if (!pdfs || pdfs.length === 0) {
       el.className = "hint";
-      el.textContent = "No PDFs.";
+      el.textContent = "No files.";
       return;
     }
 
     el.className = "";
 
     pdfs.forEach((p, i) => {
-      const name = p.name || `PDF ${i + 1}`;
+      const mime = p.mimetype || "application/pdf";
+      const name = p.name || `File ${i + 1}`;
+      const image = isImageMime(mime);
 
       const row = document.createElement("div");
       row.className = "pdf-row";
+
+      // Show thumbnail for images
+      if (image && p.data) {
+        const thumb = document.createElement("img");
+        thumb.className = "pdf-row-thumb";
+        thumb.src = `data:${mime};base64,${p.data}`;
+        thumb.alt = name;
+        thumb.addEventListener("click", () => viewFile(p.data, mime));
+        row.appendChild(thumb);
+      }
 
       const info = document.createElement("div");
       const nameDiv = document.createElement("div");
@@ -402,7 +419,7 @@ const TaskDetailView = (() => {
 
       const meta = document.createElement("div");
       meta.className = "pdf-meta";
-      meta.textContent = p.mimetype || "application/pdf";
+      meta.textContent = mime;
       info.appendChild(meta);
 
       row.appendChild(info);
@@ -413,13 +430,13 @@ const TaskDetailView = (() => {
       const viewBtn = document.createElement("button");
       viewBtn.textContent = "View";
       viewBtn.className = "secondary btn-sm";
-      viewBtn.addEventListener("click", () => viewPdf(p.data));
+      viewBtn.addEventListener("click", () => viewFile(p.data, mime));
       btns.appendChild(viewBtn);
 
       const dlBtn = document.createElement("button");
       dlBtn.textContent = "Download";
       dlBtn.className = "btn-sm";
-      dlBtn.addEventListener("click", () => downloadPdf(p.data, name));
+      dlBtn.addEventListener("click", () => downloadFile(p.data, name, mime));
       btns.appendChild(dlBtn);
 
       row.appendChild(btns);
