@@ -142,10 +142,14 @@ const TaskDetailView = (() => {
     if (validFiles.length === 0) return;
 
     // Upload files sequentially so n8n creates the folder only once
+    console.log(`[taskDetail] uploading ${validFiles.length} files SEQUENTIALLY`);
     let anySuccess = false;
-    for (const file of validFiles) {
+    for (let i = 0; i < validFiles.length; i++) {
+      const file = validFiles[i];
+      console.log(`[taskDetail] starting upload ${i + 1}/${validFiles.length}: ${file.name}`);
       try {
         const ok = await uploadPdf(file);
+        console.log(`[taskDetail] finished upload ${i + 1}/${validFiles.length}: ${file.name} → ${ok}`);
         if (ok) anySuccess = true;
       } catch { /* individual errors already handled in uploadPdf */ }
     }
