@@ -8,7 +8,6 @@
 
 const Collectors = (() => {
   let projectId = null;
-  let allSysteemOptions = [];   // unique systeem values across all collectors
 
   // ── Fetch collector data ──
 
@@ -30,15 +29,6 @@ const Collectors = (() => {
         container.innerHTML = '<p class="hint">Geen collectoren gevonden.</p>';
         return;
       }
-
-      // Collect unique systeem values for the "set all" dropdowns
-      const systeemSet = new Set();
-      collectoren.forEach(c =>
-        (c.kringen || []).forEach(k => {
-          if (k.systeem) systeemSet.add(String(k.systeem));
-        })
-      );
-      allSysteemOptions = [...systeemSet].sort();
 
       renderCollectors(collectoren, container);
     } catch (err) {
@@ -121,8 +111,6 @@ const Collectors = (() => {
     body.className = "coll-card-body";
 
     if (kringenCount > 0) {
-      // "Set system for all" dropdown row
-      body.appendChild(buildSysteemRow(collector));
       body.appendChild(buildKringenTable(collector.kringen));
     } else {
       body.innerHTML = '<p class="hint" style="margin:0;padding:8px 0">Geen kringen.</p>';
@@ -130,85 +118,6 @@ const Collectors = (() => {
 
     el.appendChild(body);
     return el;
-  }
-
-  // ── "Set system for all" row ──
-
-  function buildSysteemRow(collector) {
-    const row = document.createElement("div");
-    row.className = "coll-systeem-row";
-
-    const label = document.createElement("label");
-    label.className = "coll-systeem-label";
-    label.textContent = "System for all circuits";
-
-    const select = document.createElement("select");
-    select.className = "coll-systeem-select";
-
-    // Placeholder
-    const placeholder = document.createElement("option");
-    placeholder.value = "";
-    placeholder.textContent = "— select —";
-    placeholder.disabled = true;
-    placeholder.selected = true;
-    select.appendChild(placeholder);
-
-    // Options from all unique systeem values
-    allSysteemOptions.forEach(val => {
-      const opt = document.createElement("option");
-      opt.value = val;
-      opt.textContent = val;
-      select.appendChild(opt);
-    });
-
-    select.addEventListener("change", () => {
-      if (!select.value) return;
-      updateCollectorSysteem(collector, select.value, row);
-    });
-
-    row.appendChild(label);
-    row.appendChild(select);
-    return row;
-  }
-
-  async function updateCollectorSysteem(collector, systeem, row) {
-    const select = row.querySelector("select");
-    const status = row.querySelector(".coll-systeem-status") || document.createElement("span");
-    status.className = "coll-systeem-status";
-    if (!row.contains(status)) row.appendChild(status);
-
-    select.disabled = true;
-    status.textContent = "Saving…";
-    status.classList.remove("error", "success");
-
-    try {
-      const collectorId = collector.id || collector.collector_id;
-      const res = await Api.post(CONFIG.WEBHOOK_COLLECTOR_UPDATE, {
-        collector_id: collectorId,
-        project_id: projectId,
-        systeem: systeem,
-      });
-
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-      // Update kringen table cells visually
-      const card = row.closest(".coll-card");
-      const cells = card.querySelectorAll(".coll-kringen-table tbody td.coll-systeem-cell");
-      cells.forEach(td => { td.textContent = systeem; });
-
-      // Also update the data model so re-renders stay correct
-      (collector.kringen || []).forEach(k => { k.systeem = systeem; });
-
-      status.textContent = "Saved!";
-      status.classList.add("success");
-      setTimeout(() => { status.textContent = ""; }, 2000);
-    } catch (err) {
-      console.error("[collectors] Update systeem error:", err);
-      status.textContent = "Error";
-      status.classList.add("error");
-    } finally {
-      select.disabled = false;
-    }
   }
 
   // ── Build kringen table ──
@@ -234,7 +143,7 @@ const Collectors = (() => {
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td class="coll-kring-nr">${escapeHtml(String(k.kringnummer ?? ""))}</td>
-        <td class="coll-systeem-cell">${escapeHtml(String(k.systeem || "-"))}</td>
+        <td>${escapeHtml(String(k.systeem || "-"))}</td>
         <td>${escapeHtml(String(k.legpatroon || "-"))}</td>
         <td class="coll-kring-lengte">${k.kringlengte ? `${k.kringlengte} m` : "-"}</td>`;
       tbody.appendChild(tr);
