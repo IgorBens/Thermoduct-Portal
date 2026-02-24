@@ -111,6 +111,7 @@ const Collectors = (() => {
     body.className = "coll-card-body";
 
     if (kringenCount > 0) {
+      body.appendChild(buildSysteemRow(collector));
       body.appendChild(buildKringenTable(collector.kringen));
     } else {
       body.innerHTML = '<p class="hint" style="margin:0;padding:8px 0">Geen kringen.</p>';
@@ -118,6 +119,64 @@ const Collectors = (() => {
 
     el.appendChild(body);
     return el;
+  }
+
+  // ── Systeem dropdown row (collector level) ──
+
+  function buildSysteemRow(collector) {
+    // Determine current systeem from the collector or its kringen
+    const currentSysteem = collector.systeem
+      || (collector.kringen?.[0]?.systeem)
+      || "";
+
+    const row = document.createElement("div");
+    row.className = "coll-systeem-row";
+
+    const label = document.createElement("span");
+    label.className = "coll-systeem-label";
+    label.textContent = "Systeem";
+
+    const select = document.createElement("select");
+    select.className = "coll-systeem-select";
+
+    const options = ["Vloerverwarming", "Wandverwarming", "Plafondkoeling", "Anders"];
+    options.forEach(val => {
+      const opt = document.createElement("option");
+      opt.value = val;
+      opt.textContent = val;
+      // Select the matching option if current systeem matches
+      if (currentSysteem && val.toLowerCase() === currentSysteem.toLowerCase()) {
+        opt.selected = true;
+      }
+      select.appendChild(opt);
+    });
+
+    // If current value doesn't match any predefined option, select "Anders"
+    if (currentSysteem && !options.some(o => o.toLowerCase() === currentSysteem.toLowerCase())) {
+      select.value = "Anders";
+    }
+
+    // Text input for "Anders"
+    const textInput = document.createElement("input");
+    textInput.type = "text";
+    textInput.className = "coll-systeem-text";
+    textInput.placeholder = "Omschrijving…";
+    if (currentSysteem && !options.some(o => o.toLowerCase() === currentSysteem.toLowerCase())) {
+      textInput.value = currentSysteem;
+      textInput.style.display = "";
+    } else {
+      textInput.style.display = select.value === "Anders" ? "" : "none";
+    }
+
+    select.addEventListener("change", () => {
+      textInput.style.display = select.value === "Anders" ? "" : "none";
+      if (select.value !== "Anders") textInput.value = "";
+    });
+
+    row.appendChild(label);
+    row.appendChild(select);
+    row.appendChild(textInput);
+    return row;
   }
 
   // ── Build kringen table ──
@@ -131,7 +190,6 @@ const Collectors = (() => {
     thead.innerHTML = `
       <tr>
         <th>#</th>
-        <th>Systeem</th>
         <th>Legpatroon</th>
         <th>Lengte</th>
       </tr>`;
@@ -143,7 +201,6 @@ const Collectors = (() => {
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td class="coll-kring-nr">${escapeHtml(String(k.kringnummer ?? ""))}</td>
-        <td>${escapeHtml(String(k.systeem || "-"))}</td>
         <td>${escapeHtml(String(k.legpatroon || "-"))}</td>
         <td class="coll-kring-lengte">${k.kringlengte ? `${k.kringlengte} m` : "-"}</td>`;
       tbody.appendChild(tr);
@@ -156,7 +213,7 @@ const Collectors = (() => {
       const tfoot = document.createElement("tfoot");
       tfoot.innerHTML = `
         <tr>
-          <td colspan="3" class="coll-kring-total-label">Totale kringlengte</td>
+          <td colspan="2" class="coll-kring-total-label">Totale kringlengte</td>
           <td class="coll-kring-lengte"><strong>${totalLength.toFixed(1)} m</strong></td>
         </tr>`;
       table.appendChild(tfoot);
