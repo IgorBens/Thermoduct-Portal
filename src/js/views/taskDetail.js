@@ -141,10 +141,15 @@ const TaskDetailView = (() => {
 
     if (validFiles.length === 0) return;
 
-    // Upload files sequentially so n8n creates the folder only once
+    // Upload files sequentially with a delay so Odoo has time to commit the folder
     console.log(`[taskDetail] uploading ${validFiles.length} files SEQUENTIALLY`);
     let anySuccess = false;
     for (let i = 0; i < validFiles.length; i++) {
+      // Wait 3s between uploads so Odoo can register the newly created folder
+      if (i > 0) {
+        console.log(`[taskDetail] waiting 3s for Odoo to sync…`);
+        await new Promise(r => setTimeout(r, 3000));
+      }
       const file = validFiles[i];
       console.log(`[taskDetail] starting upload ${i + 1}/${validFiles.length}: ${file.name}`);
       try {
