@@ -243,9 +243,9 @@ const Collectors = (() => {
       const data = await res.json();
       const photos = Array.isArray(data) ? data : (data?.photos || data?.data || []);
       renderPhotoGallery(photos, gallery);
-    } catch (err) {
-      console.error("[collectors] Photo fetch error:", err);
-      gallery.innerHTML = '<span class="hint" style="font-size:12px">Foto\'s konden niet geladen worden.</span>';
+    } catch {
+      // Silently show empty state (webhook may not be configured yet)
+      gallery.innerHTML = '<span class="hint" style="font-size:12px">Nog geen foto\'s.</span>';
     }
   }
 
