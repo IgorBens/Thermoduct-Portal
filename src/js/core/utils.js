@@ -80,3 +80,16 @@ function viewFile(base64, mimetype) {
 function isImageMime(mimetype) {
   return /^image\//i.test(mimetype);
 }
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      // result is "data:<mime>;base64,AAAA…" — strip the prefix
+      const base64 = reader.result.split(",")[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}

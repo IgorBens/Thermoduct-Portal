@@ -180,7 +180,7 @@ const Collectors = (() => {
 
     el.appendChild(header);
 
-    // Body (kringen table)
+    // Body (kringen table + photos)
     const body = document.createElement("div");
     body.className = "coll-card-body";
 
@@ -190,8 +190,172 @@ const Collectors = (() => {
       body.innerHTML = '<p class="hint" style="margin:0;padding:8px 0">Geen kringen.</p>';
     }
 
+    // Photo section
+    const collectorId = collector.id || collector.naam || collector.name || `collector-${index}`;
+    body.appendChild(buildPhotoSection(collectorId));
+
     el.appendChild(body);
     return el;
+  }
+
+  // ── Photo section per collector ──
+
+  function buildPhotoSection(collectorId) {
+    const section = document.createElement("div");
+    section.className = "coll-photos";
+
+    // Header row with title + upload button
+    const header = document.createElement("div");
+    header.className = "coll-photos-header";
+    header.innerHTML = `<span class="coll-photos-title">Foto's</span>`;
+
+    const uploadBtn = document.createElement("button");
+    uploadBtn.className = "coll-photos-upload-btn";
+    uploadBtn.textContent = "Foto toevoegen";
+    uploadBtn.addEventListener("click", () => triggerPhotoUpload(collectorId, gallery, uploadBtn));
+    header.appendChild(uploadBtn);
+
+    section.appendChild(header);
+
+    // Status area for upload feedback
+    const status = document.createElement("div");
+    status.className = "coll-photos-status";
+    section.appendChild(status);
+
+    // Gallery grid
+    const gallery = document.createElement("div");
+    gallery.className = "coll-photos-gallery";
+    gallery.innerHTML = '<span class="hint" style="font-size:12px">Laden...</span>';
+    section.appendChild(gallery);
+
+    // Fetch existing photos
+    loadPhotos(collectorId, gallery);
+
+    return section;
+  }
+
+  async function loadPhotos(collectorId, gallery) {
+    try {
+      const res = await Api.get(CONFIG.WEBHOOK_COLLECTOR_PHOTOS, {
+        project_id: projectId,
+        collector_id: collectorId,
+      });
+      const data = await res.json();
+      const photos = Array.isArray(data) ? data : (data?.photos || data?.data || []);
+      renderPhotoGallery(photos, gallery);
+    } catch (err) {
+      console.error("[collectors] Photo fetch error:", err);
+      gallery.innerHTML = '<span class="hint" style="font-size:12px">Foto\'s konden niet geladen worden.</span>';
+    }
+  }
+
+  function renderPhotoGallery(photos, gallery) {
+    gallery.innerHTML = "";
+    if (!photos || photos.length === 0) {
+      gallery.innerHTML = '<span class="hint" style="font-size:12px">Nog geen foto\'s.</span>';
+      return;
+    }
+
+    photos.forEach(photo => {
+      const thumb = document.createElement("div");
+      thumb.className = "coll-photo-thumb";
+
+      const img = document.createElement("img");
+      const mime = photo.mimetype || "image/jpeg";
+      if (photo.data) {
+        img.src = `data:${mime};base64,${photo.data}`;
+      } else if (photo.url) {
+        img.src = photo.url;
+      }
+      img.alt = photo.name || "Foto";
+      img.addEventListener("click", () => {
+        if (photo.data) {
+          viewFile(photo.data, mime);
+        } else if (photo.url) {
+          window.open(photo.url, "_blank");
+        }
+      });
+
+      thumb.appendChild(img);
+
+      if (photo.name) {
+        const label = document.createElement("span");
+        label.className = "coll-photo-label";
+        label.textContent = photo.name;
+        label.title = photo.name;
+        thumb.appendChild(label);
+      }
+
+      gallery.appendChild(thumb);
+    });
+  }
+
+  function triggerPhotoUpload(collectorId, gallery, btn) {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.multiple = true;
+    input.capture = "environment";
+    input.addEventListener("change", () => {
+      if (input.files.length > 0) {
+        handlePhotoUpload(Array.from(input.files), collectorId, gallery, btn);
+      }
+    });
+    input.click();
+  }
+
+  async function handlePhotoUpload(files, collectorId, gallery, btn) {
+    const statusEl = gallery.parentElement.querySelector(".coll-photos-status");
+
+    // Validate: only images
+    const validFiles = files.filter(f => /^image\//i.test(f.type));
+    if (validFiles.length === 0) {
+      showPhotoStatus(statusEl, "error", "Alleen afbeeldingen toegestaan.");
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Uploaden...";
+
+    let anySuccess = false;
+    for (const file of validFiles) {
+      showPhotoStatus(statusEl, "uploading", `${file.name} uploaden...`);
+      try {
+        const base64 = await fileToBase64(file);
+        const res = await Api.post(CONFIG.WEBHOOK_COLLECTOR_PHOTOS, {
+          project_id: projectId,
+          collector_id: collectorId,
+          filename: file.name,
+          data: base64,
+        });
+        const result = await res.json();
+        if (res.ok && result.success !== false) {
+          showPhotoStatus(statusEl, "success", `${file.name} geupload!`);
+          anySuccess = true;
+        } else {
+          showPhotoStatus(statusEl, "error", result.message || `${file.name} mislukt`);
+        }
+      } catch (err) {
+        console.error("[collectors] Photo upload error:", err);
+        showPhotoStatus(statusEl, "error", `${file.name} — netwerkfout`);
+      }
+    }
+
+    btn.disabled = false;
+    btn.textContent = "Foto toevoegen";
+
+    // Refresh gallery after uploads
+    if (anySuccess) {
+      setTimeout(() => loadPhotos(collectorId, gallery), 800);
+    }
+
+    // Clear status after a few seconds
+    setTimeout(() => { if (statusEl) statusEl.innerHTML = ""; }, 4000);
+  }
+
+  function showPhotoStatus(el, type, message) {
+    if (!el) return;
+    el.innerHTML = `<span class="coll-photo-status-msg coll-photo-status--${type}">${escapeHtml(message)}</span>`;
   }
 
   // ── Build kringen table ──

@@ -219,19 +219,6 @@ const TaskDetailView = (() => {
     }
   }
 
-  function fileToBase64(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        // result is "data:application/pdf;base64,AAAA…" — strip the prefix
-        const base64 = reader.result.split(",")[1];
-        resolve(base64);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
-
   async function refreshTask() {
     if (!currentTask) return;
 

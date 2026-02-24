@@ -253,6 +253,105 @@
   font-weight: 600;
 }
 
+/* ── Collector photos ── */
+
+.coll-photos {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.coll-photos-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.coll-photos-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+}
+
+.coll-photos-upload-btn {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border: 1px dashed var(--primary);
+  border-radius: var(--radius);
+  background: var(--primary-light);
+  color: var(--primary);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.coll-photos-upload-btn:hover {
+  background: var(--primary);
+  color: #fff;
+  border-style: solid;
+}
+
+.coll-photos-upload-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.coll-photos-status {
+  min-height: 0;
+}
+
+.coll-photo-status-msg {
+  display: block;
+  font-size: 12px;
+  padding: 4px 0;
+}
+
+.coll-photo-status--uploading { color: var(--primary); }
+.coll-photo-status--success   { color: var(--accent); }
+.coll-photo-status--error     { color: #E53E3E; }
+
+.coll-photos-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.coll-photo-thumb {
+  width: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.coll-photo-thumb img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.coll-photo-thumb img:hover {
+  border-color: var(--primary);
+  transform: scale(1.05);
+}
+
+.coll-photo-label {
+  font-size: 10px;
+  color: var(--muted);
+  text-align: center;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ── Responsive ── */
 
 @media (max-width: 600px) {

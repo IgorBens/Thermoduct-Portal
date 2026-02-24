@@ -32,4 +32,7 @@ const CONFIG = Object.freeze({
 
   // PDF upload (project leaders only)
   WEBHOOK_PDF_UPLOAD:     "${WEBHOOK_PDF_UPLOAD}",
+
+  // Collector photos (upload to server, not Odoo)
+  WEBHOOK_COLLECTOR_PHOTOS: "${WEBHOOK_COLLECTOR_PHOTOS}",
 });
