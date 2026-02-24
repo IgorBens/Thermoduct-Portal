@@ -141,12 +141,14 @@ const TaskDetailView = (() => {
 
     if (validFiles.length === 0) return;
 
-    // Upload all files and wait for every one to finish
-    const results = await Promise.allSettled(
-      validFiles.map(file => uploadPdf(file))
-    );
-
-    const anySuccess = results.some(r => r.status === "fulfilled" && r.value === true);
+    // Upload files sequentially so n8n creates the folder only once
+    let anySuccess = false;
+    for (const file of validFiles) {
+      try {
+        const ok = await uploadPdf(file);
+        if (ok) anySuccess = true;
+      } catch { /* individual errors already handled in uploadPdf */ }
+    }
 
     // Single refresh after all uploads complete (with a small delay for backend processing)
     if (anySuccess) {
