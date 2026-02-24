@@ -240,8 +240,14 @@ const Collectors = (() => {
       const params = { project_id: projectId, collector_id: collectorId };
       if (projectName) params.project_name = projectName;
       const res = await Api.get(CONFIG.WEBHOOK_COLLECTOR_PHOTOS, params);
-      const data = await res.json();
-      const photos = Array.isArray(data) ? data : (data?.photos || data?.data || []);
+      const raw = await res.json();
+      // n8n may return [{"photos":[…]}] or {"photos":[…]} or [{name,data},…]
+      let photos;
+      if (Array.isArray(raw)) {
+        photos = raw[0]?.photos || raw[0]?.data || raw;
+      } else {
+        photos = raw?.photos || raw?.data || [];
+      }
       renderPhotoGallery(photos, gallery);
     } catch {
       // Silently show empty state (webhook may not be configured yet)
@@ -269,11 +275,13 @@ const Collectors = (() => {
       }
       img.alt = photo.name || "Foto";
       img.addEventListener("click", () => {
+        let src;
         if (photo.data) {
-          viewFile(photo.data, mime);
+          src = `data:${mime};base64,${photo.data}`;
         } else if (photo.url) {
-          window.open(photo.url, "_blank");
+          src = photo.url;
         }
+        if (src) showPhotoOverlay(src, photo.name || "Foto");
       });
 
       thumb.appendChild(img);
@@ -288,6 +296,24 @@ const Collectors = (() => {
 
       gallery.appendChild(thumb);
     });
+  }
+
+  function showPhotoOverlay(src, alt) {
+    const overlay = document.createElement("div");
+    overlay.className = "coll-photo-overlay";
+    overlay.innerHTML = `
+      <div class="coll-photo-overlay-top">
+        <span class="coll-photo-overlay-title">${escapeHtml(alt)}</span>
+        <button class="coll-photo-overlay-close">&times;</button>
+      </div>
+      <img src="${src}" alt="${escapeHtml(alt)}">
+    `;
+    overlay.addEventListener("click", e => {
+      if (e.target === overlay || e.target.classList.contains("coll-photo-overlay-close")) {
+        overlay.remove();
+      }
+    });
+    document.body.appendChild(overlay);
   }
 
   function triggerPhotoUpload(collectorId, gallery, btn) {
