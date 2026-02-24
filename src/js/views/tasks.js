@@ -376,6 +376,16 @@ const TaskList = (() => {
     // project_id is already in the task list response
     if (task.project_id) {
       TaskDetailView.setProjectId(task.project_id);
+
+      // Pass project name so collector photos use a readable directory name
+      let pName = task.project_name || "";
+      if (!pName && Array.isArray(task.project_id) && task.project_id[1]) {
+        const raw = task.project_id[1];
+        const sep = raw.indexOf(" - S");
+        pName = sep > 0 ? raw.substring(0, sep) : raw;
+      }
+      if (pName) Collectors.setProjectName(pName);
+
       Collectors.setProjectId(task.project_id);
 
       // Fetch documents/PDFs by project_id

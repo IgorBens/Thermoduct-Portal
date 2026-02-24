@@ -8,6 +8,7 @@
 
 const Collectors = (() => {
   let projectId = null;
+  let projectName = null;
 
   // ── Fetch collector data ──
 
@@ -236,10 +237,9 @@ const Collectors = (() => {
 
   async function loadPhotos(collectorId, gallery) {
     try {
-      const res = await Api.get(CONFIG.WEBHOOK_COLLECTOR_PHOTOS, {
-        project_id: projectId,
-        collector_id: collectorId,
-      });
+      const params = { project_id: projectId, collector_id: collectorId };
+      if (projectName) params.project_name = projectName;
+      const res = await Api.get(CONFIG.WEBHOOK_COLLECTOR_PHOTOS, params);
       const data = await res.json();
       const photos = Array.isArray(data) ? data : (data?.photos || data?.data || []);
       renderPhotoGallery(photos, gallery);
@@ -322,12 +322,14 @@ const Collectors = (() => {
       showPhotoStatus(statusEl, "uploading", `${file.name} uploaden...`);
       try {
         const base64 = await fileToBase64(file);
-        const res = await Api.post(CONFIG.WEBHOOK_COLLECTOR_PHOTOS, {
+        const payload = {
           project_id: projectId,
           collector_id: collectorId,
           filename: file.name,
           data: base64,
-        });
+        };
+        if (projectName) payload.project_name = projectName;
+        const res = await Api.post(CONFIG.WEBHOOK_COLLECTOR_PHOTOS, payload);
         const result = await res.json();
         if (res.ok && result.success !== false) {
           showPhotoStatus(statusEl, "success", `${file.name} geupload!`);
@@ -408,6 +410,7 @@ const Collectors = (() => {
   return {
     init() {
       projectId = null;
+      projectName = null;
       const container = document.getElementById("collectorContainer");
       if (container) container.innerHTML = '<p class="hint">Collectoren laden...</p>';
     },
@@ -416,6 +419,10 @@ const Collectors = (() => {
       if (!pid) return;
       projectId = pid;
       fetchCollectors(pid);
+    },
+
+    setProjectName(name) {
+      if (name) projectName = name;
     },
   };
 })();
