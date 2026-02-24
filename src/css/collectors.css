@@ -21,6 +21,76 @@
   color: var(--muted);
 }
 
+/* ── Collapsible group sections (blok / verdiep) ── */
+
+.coll-group {
+  margin-bottom: 8px;
+}
+
+.coll-group:last-child {
+  margin-bottom: 0;
+}
+
+.coll-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--primary);
+  color: #fff;
+  border-radius: var(--radius);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.coll-group-header:hover {
+  opacity: 0.9;
+}
+
+.coll-group-chevron {
+  display: inline-block;
+  font-size: 10px;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.coll-group-chevron.open {
+  transform: rotate(90deg);
+}
+
+.coll-group-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.coll-group-body {
+  display: none;
+  padding: 8px 0 0;
+}
+
+.coll-group-body.open {
+  display: block;
+}
+
+/* Verdiep nested inside blok: lighter style */
+.coll-group-blok .coll-group-verdiep > .coll-group-header {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+/* Verdiep at top level: slightly lighter than blok */
+.coll-group-verdiep > .coll-group-header {
+  background: var(--primary-light);
+  color: var(--primary);
+  border: 1px solid var(--border);
+}
+
+/* Nested group indentation */
+.coll-group-blok > .coll-group-body {
+  padding-left: 12px;
+}
+
 /* ── Collector card ── */
 
 .coll-card {

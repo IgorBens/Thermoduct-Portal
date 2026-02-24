@@ -61,9 +61,83 @@ const Collectors = (() => {
       </span>`;
     container.appendChild(summary);
 
-    collectoren.forEach((collector, index) => {
-      container.appendChild(buildCollectorCard(collector, index));
+    // Determine grouping
+    const hasBlok = collectoren.some(c => c.blok !== undefined && c.blok !== null && c.blok !== "");
+    const hasVerdiep = collectoren.some(c => c.verdiep !== undefined && c.verdiep !== null && c.verdiep !== "");
+
+    if (hasBlok) {
+      const blokGroups = groupBy(collectoren, "blok");
+      Object.entries(blokGroups).forEach(([blok, blokCollectoren]) => {
+        const blokSection = buildGroupSection(`Blok ${blok}`, "coll-group-blok", () => {
+          const inner = document.createDocumentFragment();
+          if (hasVerdiep) {
+            const verdiepGroups = groupBy(blokCollectoren, "verdiep");
+            Object.entries(verdiepGroups).forEach(([verdiep, vCollectoren]) => {
+              inner.appendChild(buildGroupSection(`Verdiep ${verdiep}`, "coll-group-verdiep", () => {
+                const frag = document.createDocumentFragment();
+                vCollectoren.forEach((c, i) => frag.appendChild(buildCollectorCard(c, i)));
+                return frag;
+              }));
+            });
+          } else {
+            blokCollectoren.forEach((c, i) => inner.appendChild(buildCollectorCard(c, i)));
+          }
+          return inner;
+        });
+        container.appendChild(blokSection);
+      });
+    } else if (hasVerdiep) {
+      const verdiepGroups = groupBy(collectoren, "verdiep");
+      Object.entries(verdiepGroups).forEach(([verdiep, vCollectoren]) => {
+        container.appendChild(buildGroupSection(`Verdiep ${verdiep}`, "coll-group-verdiep", () => {
+          const frag = document.createDocumentFragment();
+          vCollectoren.forEach((c, i) => frag.appendChild(buildCollectorCard(c, i)));
+          return frag;
+        }));
+      });
+    } else {
+      collectoren.forEach((collector, index) => {
+        container.appendChild(buildCollectorCard(collector, index));
+      });
+    }
+  }
+
+  // ── Helpers: groupBy + collapsible group section ──
+
+  function groupBy(arr, key) {
+    const groups = {};
+    arr.forEach(item => {
+      const val = item[key] !== undefined && item[key] !== null && item[key] !== ""
+        ? String(item[key])
+        : "Onbekend";
+      if (!groups[val]) groups[val] = [];
+      groups[val].push(item);
     });
+    return groups;
+  }
+
+  function buildGroupSection(title, className, buildContent) {
+    const section = document.createElement("div");
+    section.className = `coll-group ${className}`;
+
+    const header = document.createElement("div");
+    header.className = "coll-group-header";
+    header.innerHTML = `
+      <span class="coll-group-chevron">&#9654;</span>
+      <span class="coll-group-title">${escapeHtml(title)}</span>`;
+
+    const body = document.createElement("div");
+    body.className = "coll-group-body open";
+    body.appendChild(buildContent());
+
+    header.addEventListener("click", () => {
+      body.classList.toggle("open");
+      header.querySelector(".coll-group-chevron").classList.toggle("open");
+    });
+
+    section.appendChild(header);
+    section.appendChild(body);
+    return section;
   }
 
   // ── Build a single collector card ──
