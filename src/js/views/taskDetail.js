@@ -14,7 +14,7 @@ const TaskDetailView = (() => {
     </div>
     <div id="taskDetail"></div>
     <div class="card" id="teamCard" style="display:none">
-      <div class="section-title">Ingepland op deze werf</div>
+      <div class="section-title">Scheduled on this site</div>
       <div id="teamList" class="hint">&mdash;</div>
     </div>
     <div class="card">
@@ -29,10 +29,6 @@ const TaskDetailView = (() => {
     <div class="card">
       <div class="section-title">Collectoren</div>
       <div id="collectorContainer" class="hint">Collectoren laden...</div>
-    </div>
-    <div class="card">
-      <div class="section-title">Documents</div>
-      <div id="docContainer" class="hint">Loading project data...</div>
     </div>
   `;
 
