@@ -29,6 +29,7 @@ const CONFIG = Object.freeze({
 
   // Collectors (fase data — collectoren + kringen)
   WEBHOOK_COLLECTORS:     "${WEBHOOK_COLLECTORS}",
+  WEBHOOK_COLLECTOR_UPDATE: "${WEBHOOK_COLLECTOR_UPDATE}",
 
   // PDF upload (project leaders only)
   WEBHOOK_PDF_UPLOAD:     "${WEBHOOK_PDF_UPLOAD}",
