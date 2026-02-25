@@ -388,9 +388,9 @@ const TaskList = (() => {
 
       Collectors.setProjectId(task.project_id);
 
-      // Fetch task detail (description, PDFs) by project_id
+      // Fetch task detail (description, PDFs) by project_id + task_id
       try {
-        const res = await Api.get(`${CONFIG.WEBHOOK_TASKS}/task`, { id: task.project_id });
+        const res = await Api.get(`${CONFIG.WEBHOOK_TASKS}/task`, { id: task.project_id, task_id: task.id });
         if (res.ok) {
           const data = await res.json();
           const payload = Array.isArray(data) ? data[0] : (data?.data?.[0] || data);

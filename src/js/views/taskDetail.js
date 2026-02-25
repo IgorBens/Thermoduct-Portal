@@ -221,7 +221,7 @@ const TaskDetailView = (() => {
 
     try {
       // Re-fetch task detail (description, PDFs) from the single-task endpoint
-      const res = await Api.get(`${CONFIG.WEBHOOK_TASKS}/task`, { id: currentProjectId });
+      const res = await Api.get(`${CONFIG.WEBHOOK_TASKS}/task`, { id: currentProjectId, task_id: currentTask?.id });
       if (res.ok) {
         const data = await res.json();
         const payload = Array.isArray(data) ? data[0] : (data?.data?.[0] || data);
@@ -243,7 +243,7 @@ const TaskDetailView = (() => {
     if (!currentProjectId) return;
 
     try {
-      const res = await Api.get(`${CONFIG.WEBHOOK_TASKS}/task`, { id: currentProjectId });
+      const res = await Api.get(`${CONFIG.WEBHOOK_TASKS}/task`, { id: currentProjectId, task_id: currentTask?.id });
       const text = await res.text();
 
       let data;
