@@ -139,7 +139,6 @@ const TaskDetailView = (() => {
 
     // Upload files sequentially with a delay so Odoo has time to commit the folder
     console.log(`[taskDetail] uploading ${validFiles.length} files SEQUENTIALLY`);
-    let anySuccess = false;
     for (let i = 0; i < validFiles.length; i++) {
       // Wait 3s between uploads so Odoo can register the newly created folder
       if (i > 0) {
@@ -149,15 +148,9 @@ const TaskDetailView = (() => {
       const file = validFiles[i];
       console.log(`[taskDetail] starting upload ${i + 1}/${validFiles.length}: ${file.name}`);
       try {
-        const ok = await uploadPdf(file);
-        console.log(`[taskDetail] finished upload ${i + 1}/${validFiles.length}: ${file.name} → ${ok}`);
-        if (ok) anySuccess = true;
+        await uploadPdf(file);
+        console.log(`[taskDetail] finished upload ${i + 1}/${validFiles.length}: ${file.name}`);
       } catch { /* individual errors already handled in uploadPdf */ }
-    }
-
-    // Single refresh after all uploads complete (with a small delay for backend processing)
-    if (anySuccess) {
-      setTimeout(() => refreshPdfs(), 800);
     }
   }
 
@@ -206,6 +199,9 @@ const TaskDetailView = (() => {
 
       if (res.ok && result.success !== false) {
         showUploadStatus(file.name, "success", "Uploaded!");
+
+        // Optimistically add the file to the UI immediately
+        appendPdfRow({ name: file.name, mimetype: file.type || "application/pdf", data: base64 });
         return true;
       } else {
         showUploadStatus(file.name, "error", result.message || "Upload failed");
@@ -415,6 +411,64 @@ const TaskDetailView = (() => {
 
   // ── Render PDFs ──
 
+  function buildPdfRow(p, index) {
+    const mime = p.mimetype || "application/pdf";
+    const name = p.name || `File ${index + 1}`;
+    const image = isImageMime(mime);
+
+    const row = document.createElement("div");
+    row.className = "pdf-row";
+
+    // Show thumbnail for images
+    if (image && p.data) {
+      const thumb = document.createElement("img");
+      thumb.className = "pdf-row-thumb";
+      thumb.src = `data:${mime};base64,${p.data}`;
+      thumb.alt = name;
+      thumb.addEventListener("click", () => viewFile(p.data, mime));
+      row.appendChild(thumb);
+    }
+
+    const info = document.createElement("div");
+    const nameDiv = document.createElement("div");
+    nameDiv.className = "pdf-name";
+    nameDiv.textContent = name;
+    info.appendChild(nameDiv);
+
+    const meta = document.createElement("div");
+    meta.className = "pdf-meta";
+    meta.textContent = mime;
+    info.appendChild(meta);
+
+    row.appendChild(info);
+
+    const btns = document.createElement("div");
+    btns.style.cssText = "display:flex;gap:8px";
+
+    const viewBtn = document.createElement("button");
+    viewBtn.textContent = "View";
+    viewBtn.className = "secondary btn-sm";
+    viewBtn.addEventListener("click", () => viewFile(p.data, mime));
+    btns.appendChild(viewBtn);
+
+    const dlBtn = document.createElement("button");
+    dlBtn.textContent = "Download";
+    dlBtn.className = "btn-sm";
+    dlBtn.addEventListener("click", () => downloadFile(p.data, name, mime));
+    btns.appendChild(dlBtn);
+
+    if (Auth.hasRole("projectleider")) {
+      const delBtn = document.createElement("button");
+      delBtn.textContent = "Delete";
+      delBtn.className = "danger btn-sm";
+      delBtn.addEventListener("click", () => deletePdf(name, delBtn));
+      btns.appendChild(delBtn);
+    }
+
+    row.appendChild(btns);
+    return row;
+  }
+
   function renderPdfs(pdfs) {
     const el = document.getElementById("pdfs");
     if (!el) return;
@@ -427,64 +481,22 @@ const TaskDetailView = (() => {
     }
 
     el.className = "";
+    pdfs.forEach((p, i) => el.appendChild(buildPdfRow(p, i)));
+  }
 
-    pdfs.forEach((p, i) => {
-      const mime = p.mimetype || "application/pdf";
-      const name = p.name || `File ${i + 1}`;
-      const image = isImageMime(mime);
+  // Optimistically add a single file to the PDF list after upload
+  function appendPdfRow(fileObj) {
+    const el = document.getElementById("pdfs");
+    if (!el) return;
 
-      const row = document.createElement("div");
-      row.className = "pdf-row";
+    // If the list currently shows the "No files." placeholder, clear it
+    if (el.classList.contains("hint")) {
+      el.innerHTML = "";
+      el.className = "";
+    }
 
-      // Show thumbnail for images
-      if (image && p.data) {
-        const thumb = document.createElement("img");
-        thumb.className = "pdf-row-thumb";
-        thumb.src = `data:${mime};base64,${p.data}`;
-        thumb.alt = name;
-        thumb.addEventListener("click", () => viewFile(p.data, mime));
-        row.appendChild(thumb);
-      }
-
-      const info = document.createElement("div");
-      const nameDiv = document.createElement("div");
-      nameDiv.className = "pdf-name";
-      nameDiv.textContent = name;
-      info.appendChild(nameDiv);
-
-      const meta = document.createElement("div");
-      meta.className = "pdf-meta";
-      meta.textContent = mime;
-      info.appendChild(meta);
-
-      row.appendChild(info);
-
-      const btns = document.createElement("div");
-      btns.style.cssText = "display:flex;gap:8px";
-
-      const viewBtn = document.createElement("button");
-      viewBtn.textContent = "View";
-      viewBtn.className = "secondary btn-sm";
-      viewBtn.addEventListener("click", () => viewFile(p.data, mime));
-      btns.appendChild(viewBtn);
-
-      const dlBtn = document.createElement("button");
-      dlBtn.textContent = "Download";
-      dlBtn.className = "btn-sm";
-      dlBtn.addEventListener("click", () => downloadFile(p.data, name, mime));
-      btns.appendChild(dlBtn);
-
-      if (Auth.hasRole("projectleider")) {
-        const delBtn = document.createElement("button");
-        delBtn.textContent = "Delete";
-        delBtn.className = "danger btn-sm";
-        delBtn.addEventListener("click", () => deletePdf(name, delBtn));
-        btns.appendChild(delBtn);
-      }
-
-      row.appendChild(btns);
-      el.appendChild(row);
-    });
+    const count = el.querySelectorAll(".pdf-row").length;
+    el.appendChild(buildPdfRow(fileObj, count));
   }
 
   // ── Team / co-workers ──
