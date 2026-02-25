@@ -67,35 +67,23 @@ const Lookups = (() => {
     return null;
   }
 
-  // Collect all unique IDs that need resolving from a list of tasks
+  // Collect all unique IDs that need resolving from a list of tasks.
+  // The /tasks-quick Code node already extracts plain numeric IDs:
+  //   installateur_id, sale_order_id, address_id
   function collectIds(tasks) {
     const installerIds  = new Set();
     const salesOrderIds = new Set();
     const addressIds    = new Set();
 
     tasks.forEach(t => {
-      // Installer (x_studio_installateur) — used for "workers" display
-      const instId = m2oId(t.x_studio_installateur);
-      if (instId) installerIds.add(instId);
+      // Installer — used for "workers" display
+      if (t.installateur_id) installerIds.add(t.installateur_id);
 
-      // Project leader (x_studio_projectleider) — also a res.partner
-      const leaderId = m2oId(t.x_studio_projectleider);
-      if (leaderId) installerIds.add(leaderId);
+      // Sale order — used for project_name
+      if (t.sale_order_id) salesOrderIds.add(t.sale_order_id);
 
-      // Fallback: worker_ids array or employee_id
-      if (Array.isArray(t.worker_ids)) {
-        t.worker_ids.forEach(id => { if (id) installerIds.add(id); });
-      }
-      const empId = m2oId(t.employee_id);
-      if (empId) installerIds.add(empId);
-
-      // Sale order ID
-      const soId = m2oId(t.sale_order_id);
-      if (soId) salesOrderIds.add(soId);
-
-      // Delivery address ID
-      const addrId = m2oId(t.x_studio_afleveradres) || m2oId(t.partner_id);
-      if (addrId) addressIds.add(addrId);
+      // Delivery address — used for address_full (street, zip city)
+      if (t.address_id) addressIds.add(t.address_id);
     });
 
     return { installerIds, salesOrderIds, addressIds };
@@ -114,50 +102,34 @@ const Lookups = (() => {
     ]);
   }
 
-  // Enrich task objects with resolved lookup data (only fills missing fields)
+  // Enrich task objects with resolved lookup data.
+  // The /tasks-quick Code node already provides:
+  //   project_leader (string), address_name (string), order_number (string)
+  // Lookups fill in the remaining fields:
+  //   project_name, address_full, workers
   function enrichTasks(tasks) {
     tasks.forEach(t => {
-      // ── Project name from sales order ──
-      if (!t.project_name) {
-        const soId = m2oId(t.sale_order_id);
-        const so = soId ? salesOrders[soId] : null;
+      // ── Project name from sales order lookup ──
+      if (!t.project_name && t.sale_order_id) {
+        const so = salesOrders[t.sale_order_id];
         if (so?.project_name) t.project_name = so.project_name;
       }
 
-      // ── Project leader from x_studio_projectleider ──
-      if (!t.project_leader) {
-        const leaderId = m2oId(t.x_studio_projectleider);
-        const leader = leaderId ? installers[leaderId] : null;
-        if (leader?.name) t.project_leader = leader.name;
-      }
-
-      // ── Address from partner/delivery address ──
-      if (!t.address_name && !t.address_full) {
-        const addrId = m2oId(t.x_studio_afleveradres) || m2oId(t.partner_id);
-        const addr = addrId ? addresses[addrId] : null;
+      // ── Full address from address lookup (street, zip city) ──
+      if (!t.address_full && t.address_id) {
+        const addr = addresses[t.address_id];
         if (addr) {
-          // address_name: bold label (street)
-          if (addr.street) t.address_name = addr.street;
-          // address_full: street, zip city
           const cityLine = [addr.zip, addr.city].filter(Boolean).join(" ");
           t.address_full = [addr.street, cityLine].filter(Boolean).join(", ");
+          // Also set address_name from lookup if n8n didn't provide one
+          if (!t.address_name && addr.street) t.address_name = addr.street;
         }
       }
 
-      // ── Workers from x_studio_installateur ──
-      if (!t.workers || t.workers.length === 0) {
-        const instId = m2oId(t.x_studio_installateur);
-        const inst = instId ? installers[instId] : null;
+      // ── Worker name from installer lookup ──
+      if ((!t.workers || t.workers.length === 0) && t.installateur_id) {
+        const inst = installers[t.installateur_id];
         if (inst?.name) t.workers = [inst.name];
-
-        // Fallback: worker_ids array
-        if (!t.workers || t.workers.length === 0) {
-          const wIds = t.worker_ids || [];
-          if (wIds.length > 0) {
-            const names = wIds.map(id => installers[id]?.name).filter(Boolean);
-            if (names.length > 0) t.workers = names;
-          }
-        }
       }
     });
   }

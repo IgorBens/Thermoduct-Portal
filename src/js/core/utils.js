@@ -20,7 +20,7 @@ function getNextWorkDay() {
 }
 
 function getTaskDate(t) {
-  if (t.date) return t.date;
+  if (t.date) return String(t.date).split(" ")[0];
   if (t.planned_date_begin) return String(t.planned_date_begin).split(" ")[0];
   return "";
 }
