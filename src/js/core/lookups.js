@@ -53,7 +53,12 @@ const Lookups = (() => {
     const addressIds    = new Set();
 
     tasks.forEach(t => {
-      if (t.installateur_id) installerIds.add(t.installateur_id);
+      const iid = t.installateur_id;
+      if (Array.isArray(iid)) {
+        iid.forEach(id => { if (id) installerIds.add(id); });
+      } else if (iid) {
+        installerIds.add(iid);
+      }
       if (t.sale_order_id) salesOrderIds.add(t.sale_order_id);
       if (t.address_id) addressIds.add(t.address_id);
     });
@@ -88,8 +93,11 @@ const Lookups = (() => {
       }
 
       if ((!t.workers || t.workers.length === 0) && t.installateur_id) {
-        const inst = installers[t.installateur_id];
-        if (inst?.name) t.workers = [inst.name];
+        const ids = Array.isArray(t.installateur_id) ? t.installateur_id : [t.installateur_id];
+        const names = ids
+          .map(id => installers[id]?.name)
+          .filter(Boolean);
+        if (names.length > 0) t.workers = names;
       }
     });
   }
