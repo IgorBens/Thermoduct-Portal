@@ -257,14 +257,14 @@ const Collectors = (() => {
       } else {
         photos = raw?.photos || raw?.data || [];
       }
-      renderPhotoGallery(photos, gallery);
+      renderPhotoGallery(photos, gallery, collectorId);
     } catch {
       // Silently show empty state (webhook may not be configured yet)
       gallery.innerHTML = '<span class="hint" style="font-size:12px">Nog geen foto\'s.</span>';
     }
   }
 
-  function renderPhotoGallery(photos, gallery) {
+  function renderPhotoGallery(photos, gallery, collectorId) {
     gallery.innerHTML = "";
     if (!photos || photos.length === 0) {
       gallery.innerHTML = '<span class="hint" style="font-size:12px">Nog geen foto\'s.</span>';
@@ -293,7 +293,20 @@ const Collectors = (() => {
         if (src) showPhotoOverlay(src, photo.name || "Foto");
       });
 
-      thumb.appendChild(img);
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "coll-photo-delete";
+      deleteBtn.innerHTML = "&times;";
+      deleteBtn.title = "Verwijderen";
+      deleteBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        deletePhoto(photo.name, collectorId, gallery);
+      });
+
+      const imgWrap = document.createElement("div");
+      imgWrap.className = "coll-photo-img-wrap";
+      imgWrap.appendChild(img);
+      imgWrap.appendChild(deleteBtn);
+      thumb.appendChild(imgWrap);
 
       if (photo.name) {
         const label = document.createElement("span");
@@ -305,6 +318,35 @@ const Collectors = (() => {
 
       gallery.appendChild(thumb);
     });
+  }
+
+  async function deletePhoto(filename, collectorId, gallery) {
+    if (!confirm(`"${filename}" verwijderen?`)) return;
+
+    const statusEl = gallery.parentElement.querySelector(".coll-photos-status");
+    showPhotoStatus(statusEl, "uploading", `${filename} verwijderen...`);
+
+    try {
+      const payload = {
+        action: "delete",
+        project_id: projectId,
+        collector_id: collectorId,
+        filename,
+      };
+      if (projectName) payload.project_name = projectName;
+      const res = await Api.post(CONFIG.WEBHOOK_COLLECTOR_PHOTOS, payload);
+      const result = await res.json();
+      if (res.ok && result.success !== false) {
+        showPhotoStatus(statusEl, "success", `${filename} verwijderd`);
+        loadPhotos(collectorId, gallery);
+      } else {
+        showPhotoStatus(statusEl, "error", result.message || "Verwijderen mislukt");
+      }
+    } catch (err) {
+      console.error("[collectors] Photo delete error:", err);
+      showPhotoStatus(statusEl, "error", "Netwerkfout bij verwijderen");
+    }
+    setTimeout(() => { if (statusEl) statusEl.innerHTML = ""; }, 4000);
   }
 
   function showPhotoOverlay(src, alt) {
