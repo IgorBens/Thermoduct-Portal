@@ -191,9 +191,9 @@ const Collectors = (() => {
       body.innerHTML = '<p class="hint" style="margin:0;padding:8px 0">Geen kringen.</p>';
     }
 
-    // Photo section
-    const collectorId = collector.id || collector.naam || collector.name || `collector-${index}`;
-    body.appendChild(buildPhotoSection(collectorId));
+    // Photo section — use display name as folder key (matches server directory)
+    const collectorPhotoId = collector.naam || collector.name || `Collector ${index + 1}`;
+    body.appendChild(buildPhotoSection(collectorPhotoId));
 
     el.appendChild(body);
     return el;
