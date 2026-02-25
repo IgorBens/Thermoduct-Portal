@@ -387,6 +387,78 @@
   letter-spacing: 0.5px;
 }
 
+/* ── Task photos (easykit role) ── */
+
+.task-photo-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.task-photo-thumb {
+  width: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.task-photo-img-wrap {
+  position: relative;
+  width: 100px;
+  height: 100px;
+}
+
+.task-photo-img-wrap img {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.task-photo-img-wrap:hover img {
+  border-color: var(--primary);
+  transform: scale(1.05);
+}
+
+.task-photo-footer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+}
+
+.task-photo-label {
+  font-size: 10px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.task-photo-delete-btn {
+  font-size: 9px;
+  padding: 1px 5px;
+  border: 1px solid #E53E3E;
+  background: transparent;
+  color: #E53E3E;
+  border-radius: var(--radius);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.task-photo-delete-btn:active {
+  background: #E53E3E;
+  color: #fff;
+}
+
 /* Responsive */
 
 @media (max-width: 600px) {

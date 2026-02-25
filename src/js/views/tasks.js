@@ -191,8 +191,15 @@ const TaskList = (() => {
       return;
     }
 
-    tasks.sort((a, b) => getTaskDate(a).localeCompare(getTaskDate(b)));
     statusEl.textContent = `${tasks.length} task${tasks.length === 1 ? "" : "s"} found.`;
+
+    // Easykit role: keep the exact order from Odoo planning (no sort)
+    if (Auth.hasRole("easykit")) {
+      tasks.forEach(t => listEl.appendChild(buildTaskCard(t)));
+      return;
+    }
+
+    tasks.sort((a, b) => getTaskDate(a).localeCompare(getTaskDate(b)));
 
     // Warehouse role: group by worker, Hendrika tasks → "Easykit" at bottom
     if (Auth.hasRole("warehouse")) {
@@ -363,11 +370,21 @@ const TaskList = (() => {
   // ── Open single task ──
 
   async function openTask(task) {
+    const easykit = Auth.hasRole("easykit");
+
     Router.showView("taskDetail");
     TaskDetailView.render(task);
-    TaskDetailView.renderTeam(allTasks);
     TaskDetailView.setLoadingPdfs();
-    Collectors.init();
+
+    if (!easykit) {
+      TaskDetailView.renderTeam(allTasks);
+      Collectors.init();
+    }
+
+    // Easykit: load task photos
+    if (easykit) {
+      TaskDetailView.loadTaskPhotos();
+    }
 
     // project_id is already in the task list response
     if (task.project_id) {
@@ -375,10 +392,11 @@ const TaskList = (() => {
 
       TaskDetailView.setProjectId(pid);
 
-      // Pass project name so collector photos use a readable directory name
-      if (task.project_name) Collectors.setProjectName(task.project_name);
-
-      Collectors.setProjectId(pid);
+      if (!easykit) {
+        // Pass project name so collector photos use a readable directory name
+        if (task.project_name) Collectors.setProjectName(task.project_name);
+        Collectors.setProjectId(pid);
+      }
 
       // Fetch task info and documents in parallel (two separate n8n flows)
       const params = { id: pid, task_id: task.id };

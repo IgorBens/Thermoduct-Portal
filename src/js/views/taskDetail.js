@@ -5,7 +5,11 @@ const TaskDetailView = (() => {
 
   let currentProjectId = null;
 
-  const template = `
+  const isEasykit = () => Auth.hasRole("easykit");
+
+  function buildTemplate() {
+    const easykit = isEasykit();
+    return `
     <div class="detail-top-row">
       <button id="backToList" class="secondary">
         &larr; Back to list
@@ -13,10 +17,11 @@ const TaskDetailView = (() => {
       <button id="taskRefreshBtn" class="secondary btn-sm">Refresh</button>
     </div>
     <div id="taskDetail"></div>
+    ${easykit ? "" : `
     <div class="card" id="teamCard" style="display:none">
       <div class="section-title">Scheduled on this site</div>
       <div id="teamList" class="hint">&mdash;</div>
-    </div>
+    </div>`}
     <div class="card">
       <div class="section-title-row">
         <div class="section-title" style="margin-bottom:0">Files</div>
@@ -26,11 +31,21 @@ const TaskDetailView = (() => {
       <div id="pdfUploadProgress"></div>
       <div id="pdfs" class="hint">&mdash;</div>
     </div>
+    ${easykit ? `
+    <div class="card">
+      <div class="section-title-row">
+        <div class="section-title" style="margin-bottom:0">Photos</div>
+        <button id="taskPhotoUploadBtn" class="secondary btn-sm">Add photo</button>
+      </div>
+      <div id="taskPhotoStatus"></div>
+      <div id="taskPhotoGallery" class="task-photo-gallery hint">&mdash;</div>
+    </div>` : `
     <div class="card">
       <div class="section-title">Collectors</div>
       <div id="collectorContainer" class="hint">Loading collectors...</div>
-    </div>
+    </div>`}
   `;
+  }
 
   let currentTask = null;
 
@@ -46,6 +61,12 @@ const TaskDetailView = (() => {
     // Show dropzone only for project leaders
     if (Auth.hasRole("projectleider")) {
       renderDropzone();
+    }
+
+    // Easykit: bind photo upload button
+    const photoBtn = document.getElementById("taskPhotoUploadBtn");
+    if (photoBtn) {
+      photoBtn.addEventListener("click", () => triggerTaskPhotoUpload());
     }
   }
 
@@ -251,6 +272,9 @@ const TaskDetailView = (() => {
     } catch (err) {
       console.error("[taskDetail] Document refresh error:", err);
     }
+
+    // Easykit: also refresh task photos
+    if (isEasykit()) loadTaskPhotos();
 
     if (btn) { btn.disabled = false; btn.textContent = "Refresh"; }
   }
@@ -560,6 +584,185 @@ const TaskDetailView = (() => {
     });
   }
 
+  // ── Task photos (easykit role) ──
+
+  function triggerTaskPhotoUpload() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.multiple = true;
+    input.addEventListener("change", () => {
+      if (input.files.length > 0) handleTaskPhotoUpload(Array.from(input.files));
+    });
+    input.click();
+  }
+
+  async function handleTaskPhotoUpload(files) {
+    const statusEl = document.getElementById("taskPhotoStatus");
+    const gallery  = document.getElementById("taskPhotoGallery");
+    const btn      = document.getElementById("taskPhotoUploadBtn");
+
+    const validFiles = files.filter(f => /^image\//i.test(f.type));
+    if (validFiles.length === 0) {
+      showTaskPhotoStatus(statusEl, "error", "Only images are allowed.");
+      return;
+    }
+
+    if (btn) { btn.disabled = true; btn.textContent = "Uploading\u2026"; }
+
+    let anySuccess = false;
+    for (const file of validFiles) {
+      showTaskPhotoStatus(statusEl, "uploading", `Uploading ${file.name}\u2026`);
+      try {
+        const base64 = await fileToBase64(file);
+        const res = await Api.post(CONFIG.WEBHOOK_TASK_PHOTOS, {
+          task_id:  currentTask.id,
+          filename: file.name,
+          data:     base64,
+        });
+        const result = await res.json();
+        if (res.ok && result.success !== false) {
+          showTaskPhotoStatus(statusEl, "success", `${file.name} uploaded!`);
+          anySuccess = true;
+        } else {
+          showTaskPhotoStatus(statusEl, "error", result.message || `${file.name} failed`);
+        }
+      } catch (err) {
+        console.error("[taskDetail] Task photo upload error:", err);
+        showTaskPhotoStatus(statusEl, "error", `${file.name} \u2014 network error`);
+      }
+    }
+
+    if (btn) { btn.disabled = false; btn.textContent = "Add photo"; }
+    if (anySuccess) setTimeout(() => loadTaskPhotos(), 800);
+    setTimeout(() => { if (statusEl) statusEl.innerHTML = ""; }, 4000);
+  }
+
+  async function loadTaskPhotos() {
+    const gallery = document.getElementById("taskPhotoGallery");
+    if (!gallery || !currentTask) return;
+
+    gallery.className = "task-photo-gallery hint";
+    gallery.textContent = "Loading photos\u2026";
+
+    try {
+      const res = await Api.get(CONFIG.WEBHOOK_TASK_PHOTOS, { task_id: currentTask.id });
+      const raw = await res.json();
+
+      let photos;
+      if (Array.isArray(raw)) {
+        photos = raw[0]?.photos || raw[0]?.data || raw;
+      } else {
+        photos = raw?.photos || raw?.data || [];
+      }
+      renderTaskPhotoGallery(photos, gallery);
+    } catch {
+      gallery.className = "task-photo-gallery hint";
+      gallery.textContent = "No photos yet.";
+    }
+  }
+
+  function renderTaskPhotoGallery(photos, gallery) {
+    gallery.innerHTML = "";
+    if (!photos || photos.length === 0) {
+      gallery.className = "task-photo-gallery hint";
+      gallery.textContent = "No photos yet.";
+      return;
+    }
+
+    gallery.className = "task-photo-gallery";
+    photos.forEach(photo => {
+      const thumb = document.createElement("div");
+      thumb.className = "task-photo-thumb";
+
+      const img = document.createElement("img");
+      const mime = photo.mimetype || "image/jpeg";
+      if (photo.data) {
+        img.src = `data:${mime};base64,${photo.data}`;
+      } else if (photo.url) {
+        img.src = photo.url;
+      }
+      img.alt = photo.name || "Photo";
+      img.addEventListener("click", () => {
+        const src = photo.data ? `data:${mime};base64,${photo.data}` : photo.url;
+        if (src) showTaskPhotoOverlay(src, photo.name || "Photo");
+      });
+
+      const imgWrap = document.createElement("div");
+      imgWrap.className = "task-photo-img-wrap";
+      imgWrap.appendChild(img);
+      thumb.appendChild(imgWrap);
+
+      const footer = document.createElement("div");
+      footer.className = "task-photo-footer";
+
+      if (photo.name) {
+        const label = document.createElement("span");
+        label.className = "task-photo-label";
+        label.textContent = photo.name;
+        label.title = photo.name;
+        footer.appendChild(label);
+      }
+
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "task-photo-delete-btn";
+      deleteBtn.textContent = "Delete";
+      deleteBtn.addEventListener("click", () => deleteTaskPhoto(photo.name));
+      footer.appendChild(deleteBtn);
+
+      thumb.appendChild(footer);
+      gallery.appendChild(thumb);
+    });
+  }
+
+  async function deleteTaskPhoto(filename) {
+    if (!confirm(`Delete "${filename}"?`)) return;
+
+    const statusEl = document.getElementById("taskPhotoStatus");
+    showTaskPhotoStatus(statusEl, "uploading", `Deleting ${filename}\u2026`);
+
+    try {
+      const res = await Api.delete(CONFIG.WEBHOOK_TASK_PHOTOS, {
+        task_id: currentTask.id,
+        filename,
+      });
+      const result = await res.json();
+      if (res.ok && result.success !== false) {
+        showTaskPhotoStatus(statusEl, "success", `${filename} deleted`);
+        loadTaskPhotos();
+      } else {
+        showTaskPhotoStatus(statusEl, "error", result.message || "Delete failed");
+      }
+    } catch (err) {
+      console.error("[taskDetail] Task photo delete error:", err);
+      showTaskPhotoStatus(statusEl, "error", "Network error while deleting");
+    }
+    setTimeout(() => { if (statusEl) statusEl.innerHTML = ""; }, 4000);
+  }
+
+  function showTaskPhotoOverlay(src, alt) {
+    const overlay = document.createElement("div");
+    overlay.className = "coll-photo-overlay";
+    overlay.innerHTML = `
+      <div class="coll-photo-overlay-top">
+        <span class="coll-photo-overlay-title">${escapeHtml(alt)}</span>
+        <button class="coll-photo-overlay-close">&times;</button>
+      </div>
+      <img src="${src}" alt="${escapeHtml(alt)}">
+    `;
+    overlay.addEventListener("click", e => {
+      if (e.target === overlay || e.target.classList.contains("coll-photo-overlay-close")) {
+        overlay.remove();
+      }
+    });
+    document.body.appendChild(overlay);
+  }
+
+  function showTaskPhotoStatus(el, type, message) {
+    if (!el) return;
+    el.innerHTML = `<span class="coll-photo-status-msg coll-photo-status--${type}">${escapeHtml(message)}</span>`;
+  }
+
   // ── Set project ID (called from tasks.js) ──
 
   function setProjectId(pid) {
@@ -568,7 +771,10 @@ const TaskDetailView = (() => {
 
   // ── Register (no tab — accessed via task list, not nav) ──
 
-  Router.register("taskDetail", { template, mount });
+  Router.register("taskDetail", {
+    get template() { return buildTemplate(); },
+    mount,
+  });
 
-  return { render, renderPdfs, setLoadingPdfs, setProjectId, renderTeam };
+  return { render, renderPdfs, setLoadingPdfs, setProjectId, renderTeam, loadTaskPhotos };
 })();
