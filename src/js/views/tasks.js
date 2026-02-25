@@ -85,7 +85,6 @@ const TaskList = (() => {
     document.getElementById("tasksRefreshBtn").addEventListener("click", () => {
       allTasks = [];
       try { localStorage.removeItem(CACHE_KEY); } catch { /* ok */ }
-      Lookups.clear();
       fetchTasks();
     });
 
@@ -439,8 +438,6 @@ const TaskList = (() => {
     // 1) Show cached data instantly (if available for this pastDays scope)
     const cached = readCache(pastDays);
     if (cached && cached.length > 0) {
-      // Enrich from lookup cache (synchronous — uses already-cached data)
-      Lookups.enrichTasks(cached);
       allTasks = cached;
       populateDateFilter(cached);
       populateLeaderFilter(cached);
@@ -474,13 +471,6 @@ const TaskList = (() => {
       else if (data?.id !== undefined) tasks = [data];
       else tasks = [];
 
-      // 3) Resolve any ID-only fields via cached lookups (installers, addresses, sales orders)
-      try {
-        await Lookups.resolveForTasks(tasks);
-        Lookups.enrichTasks(tasks);
-      } catch (err) {
-        console.warn("[tasks] Lookup enrichment failed (non-fatal):", err);
-      }
 
       // 4) Only re-render if data actually changed
       const fresh = JSON.stringify(tasks);

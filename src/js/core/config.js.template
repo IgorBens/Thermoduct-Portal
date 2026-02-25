@@ -35,9 +35,4 @@ const CONFIG = Object.freeze({
 
   // Collector photos (upload to server, not Odoo)
   WEBHOOK_COLLECTOR_PHOTOS:       "${WEBHOOK_COLLECTOR_PHOTOS}",
-
-  // Lookup endpoints (cached by frontend)
-  WEBHOOK_LOOKUP_INSTALLERS:      "${WEBHOOK_LOOKUP_INSTALLERS}",
-  WEBHOOK_LOOKUP_SALES_ORDERS:    "${WEBHOOK_LOOKUP_SALES_ORDERS}",
-  WEBHOOK_LOOKUP_ADDRESSES:       "${WEBHOOK_LOOKUP_ADDRESSES}",
 });
