@@ -376,7 +376,9 @@ const TaskList = (() => {
 
     // project_id is already in the task list response
     if (task.project_id) {
-      TaskDetailView.setProjectId(task.project_id);
+      const pid = Array.isArray(task.project_id) ? task.project_id[0] : task.project_id;
+
+      TaskDetailView.setProjectId(pid);
 
       // Pass project name so collector photos use a readable directory name
       let pName = task.project_name || "";
@@ -387,10 +389,10 @@ const TaskList = (() => {
       }
       if (pName) Collectors.setProjectName(pName);
 
-      Collectors.setProjectId(task.project_id);
+      Collectors.setProjectId(pid);
 
       // Fetch task info and documents in parallel (two separate n8n flows)
-      const params = { id: task.project_id, task_id: task.id };
+      const params = { id: pid, task_id: task.id };
       const infoPromise = Api.get(`${CONFIG.WEBHOOK_TASKS}/task-info`, params);
       const docsPromise = Api.get(`${CONFIG.WEBHOOK_TASKS}/task-docs`, params);
 
