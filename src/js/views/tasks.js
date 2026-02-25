@@ -479,6 +479,9 @@ const TaskList = (() => {
       populateLeaderFilter(tasks);
       filterAndRender();
 
+      // Snapshot before lookups so we can detect new data
+      const beforeLookups = JSON.stringify(tasks);
+
       // 4) Fetch any missing lookups (skipped entirely when TTL is fresh)
       try {
         await Lookups.resolveForTasks(tasks);
@@ -487,15 +490,14 @@ const TaskList = (() => {
         console.warn("[tasks] Lookup enrichment failed (non-fatal):", err);
       }
 
-      // 5) Re-render only if lookups added new data
-      const enriched = JSON.stringify(tasks);
-      const current  = JSON.stringify(allTasks);
-      if (enriched !== current) {
+      // 5) Re-render if lookups added new data (e.g. project names)
+      if (JSON.stringify(tasks) !== beforeLookups) {
         allTasks = tasks;
+        populateDateFilter(tasks);
+        populateLeaderFilter(tasks);
         filterAndRender();
-      } else {
-        statusEl.textContent = `${tasks.length} task${tasks.length === 1 ? "" : "s"} found.`;
       }
+      statusEl.textContent = `${tasks.length} task${tasks.length === 1 ? "" : "s"} found.`;
 
       writeCache(pastDays, tasks);
     } catch (err) {
