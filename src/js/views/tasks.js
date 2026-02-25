@@ -388,19 +388,33 @@ const TaskList = (() => {
 
       Collectors.setProjectId(task.project_id);
 
-      // Fetch task detail (description, PDFs) by project_id + task_id
+      // Fetch task info and documents in parallel (two separate n8n flows)
+      const params = { id: task.project_id, task_id: task.id };
+      const infoPromise = Api.get(`${CONFIG.WEBHOOK_TASKS}/task-info`, params);
+      const docsPromise = Api.get(`${CONFIG.WEBHOOK_TASKS}/task-docs`, params);
+
+      // Task info comes back fast — render description immediately
       try {
-        const res = await Api.get(`${CONFIG.WEBHOOK_TASKS}/task`, { id: task.project_id, task_id: task.id });
+        const res = await infoPromise;
         if (res.ok) {
           const data = await res.json();
           const payload = Array.isArray(data) ? data[0] : (data?.data?.[0] || data);
-          TaskDetailView.renderPdfs(payload?.pdfs || []);
-
-          // Merge description from detail endpoint and re-render
           if (payload?.description !== undefined) {
             task.description = payload.description;
             TaskDetailView.render(task);
           }
+        }
+      } catch (err) {
+        console.error("[tasks] Task info fetch error:", err);
+      }
+
+      // Documents come back slower — render PDFs when ready
+      try {
+        const res = await docsPromise;
+        if (res.ok) {
+          const data = await res.json();
+          const payload = Array.isArray(data) ? data[0] : (data?.data?.[0] || data);
+          TaskDetailView.renderPdfs(payload?.pdfs || []);
         }
       } catch (err) {
         console.error("[tasks] Document fetch error:", err);

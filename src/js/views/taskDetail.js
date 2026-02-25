@@ -219,31 +219,47 @@ const TaskDetailView = (() => {
     const btn = document.getElementById("taskRefreshBtn");
     if (btn) { btn.disabled = true; btn.textContent = "Refreshing\u2026"; }
 
+    setLoadingPdfs();
+
+    const params = { id: currentProjectId, task_id: currentTask?.id };
+    const infoPromise = Api.get(`${CONFIG.WEBHOOK_TASKS}/task-info`, params);
+    const docsPromise = Api.get(`${CONFIG.WEBHOOK_TASKS}/task-docs`, params);
+
+    // Task info renders immediately
     try {
-      // Re-fetch task detail (description, PDFs) from the single-task endpoint
-      const res = await Api.get(`${CONFIG.WEBHOOK_TASKS}/task`, { id: currentProjectId, task_id: currentTask?.id });
+      const res = await infoPromise;
       if (res.ok) {
         const data = await res.json();
         const payload = Array.isArray(data) ? data[0] : (data?.data?.[0] || data);
-
-        // Merge description into current task and re-render
         if (payload?.description !== undefined) {
           currentTask.description = payload.description;
         }
         render(currentTask);
       }
     } catch (err) {
-      console.error("[taskDetail] Task refresh error:", err);
-    } finally {
-      if (btn) { btn.disabled = false; btn.textContent = "Refresh"; }
+      console.error("[taskDetail] Task info refresh error:", err);
     }
+
+    // Documents render when ready
+    try {
+      const res = await docsPromise;
+      if (res.ok) {
+        const data = await res.json();
+        const payload = Array.isArray(data) ? data[0] : (data?.data?.[0] || data);
+        renderPdfs(payload?.pdfs || []);
+      }
+    } catch (err) {
+      console.error("[taskDetail] Document refresh error:", err);
+    }
+
+    if (btn) { btn.disabled = false; btn.textContent = "Refresh"; }
   }
 
   async function refreshPdfs() {
     if (!currentProjectId) return;
 
     try {
-      const res = await Api.get(`${CONFIG.WEBHOOK_TASKS}/task`, { id: currentProjectId, task_id: currentTask?.id });
+      const res = await Api.get(`${CONFIG.WEBHOOK_TASKS}/task-docs`, { id: currentProjectId, task_id: currentTask?.id });
       const text = await res.text();
 
       let data;
