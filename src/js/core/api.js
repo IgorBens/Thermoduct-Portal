@@ -91,6 +91,14 @@ const Api = (() => {
       });
     },
 
+    async delete(endpoint, body, params = {}) {
+      return request(buildUrl(endpoint, params), {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    },
+
     // Build a URL without fetching (for <img src>, download links, etc.)
     url(endpoint, params = {}) {
       return buildUrl(endpoint, params);

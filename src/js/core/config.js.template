@@ -35,5 +35,4 @@ const CONFIG = Object.freeze({
 
   // Collector photos (upload to server, not Odoo)
   WEBHOOK_COLLECTOR_PHOTOS:       "${WEBHOOK_COLLECTOR_PHOTOS}",
-  WEBHOOK_COLLECTOR_PHOTO_DELETE: "${WEBHOOK_COLLECTOR_PHOTO_DELETE}",
 });
