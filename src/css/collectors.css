@@ -1,0 +1,457 @@
+/* ── Collectors: summary bar ── */
+
+.coll-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  background: var(--primary-light);
+  border-radius: var(--radius);
+  font-size: 13px;
+  color: var(--text);
+  flex-wrap: wrap;
+}
+
+.coll-summary-item strong {
+  color: var(--primary);
+}
+
+.coll-summary-dot {
+  color: var(--muted);
+}
+
+/* ── Collapsible group sections (blok / verdiep) ── */
+
+.coll-group {
+  margin-bottom: 8px;
+}
+
+.coll-group:last-child {
+  margin-bottom: 0;
+}
+
+.coll-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--primary);
+  color: #fff;
+  border-radius: var(--radius);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.coll-group-header:hover {
+  opacity: 0.9;
+}
+
+.coll-group-chevron {
+  display: inline-block;
+  font-size: 10px;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.coll-group-chevron.open {
+  transform: rotate(90deg);
+}
+
+.coll-group-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.coll-group-body {
+  display: none;
+  padding: 8px 0 0;
+}
+
+.coll-group-body.open {
+  display: block;
+}
+
+/* Verdiep nested inside blok: lighter style */
+.coll-group-blok .coll-group-verdiep > .coll-group-header {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+/* Verdiep at top level: slightly lighter than blok */
+.coll-group-verdiep > .coll-group-header {
+  background: var(--primary-light);
+  color: var(--primary);
+  border: 1px solid var(--border);
+}
+
+/* Nested group indentation */
+.coll-group-blok > .coll-group-body {
+  padding-left: 12px;
+}
+
+/* ── Collector card ── */
+
+.coll-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.coll-card:last-child {
+  margin-bottom: 0;
+}
+
+.coll-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #fff;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.coll-card-header:hover {
+  background: var(--primary-light);
+}
+
+.coll-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.coll-chevron {
+  display: inline-block;
+  font-size: 10px;
+  color: var(--muted);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.coll-chevron.open {
+  transform: rotate(90deg);
+}
+
+.coll-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.coll-header-naam {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.coll-header-meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.coll-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.coll-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--primary-light);
+  color: var(--primary);
+  white-space: nowrap;
+}
+
+.coll-badge--accent {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+/* ── Collector body (kringen) ── */
+
+.coll-card-body {
+  display: none;
+  padding: 0 14px 14px;
+  background: #fff;
+}
+
+.coll-card-body.open {
+  display: block;
+}
+
+/* ── Kringen table ── */
+
+.coll-kringen-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.coll-kringen-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  padding: 8px 10px;
+  border-bottom: 2px solid var(--border);
+}
+
+.coll-kringen-table td {
+  padding: 8px 10px;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+
+.coll-kringen-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.coll-kringen-table tbody tr:hover {
+  background: #F5F7FA;
+}
+
+.coll-kring-nr {
+  font-weight: 700;
+  color: var(--primary);
+  width: 40px;
+}
+
+.coll-kring-lengte {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* ── Kringen table footer (totals) ── */
+
+.coll-kringen-table tfoot td {
+  padding: 10px;
+  border-top: 2px solid var(--border);
+  border-bottom: none;
+  font-size: 13px;
+}
+
+.coll-kring-total-label {
+  text-align: right;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* ── Collector photos ── */
+
+.coll-photos {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.coll-photos-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.coll-photos-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+}
+
+.coll-photos-upload-btn {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border: 1px dashed var(--primary);
+  border-radius: var(--radius);
+  background: var(--primary-light);
+  color: var(--primary);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.coll-photos-upload-btn:hover {
+  background: var(--primary);
+  color: #fff;
+  border-style: solid;
+}
+
+.coll-photos-upload-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.coll-photos-status {
+  min-height: 0;
+}
+
+.coll-photo-status-msg {
+  display: block;
+  font-size: 12px;
+  padding: 4px 0;
+}
+
+.coll-photo-status--uploading { color: var(--primary); }
+.coll-photo-status--success   { color: var(--accent); }
+.coll-photo-status--error     { color: #E53E3E; }
+
+.coll-photos-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.coll-photo-thumb {
+  width: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.coll-photo-img-wrap {
+  position: relative;
+  width: 80px;
+  height: 80px;
+}
+
+.coll-photo-img-wrap img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.coll-photo-img-wrap:hover img {
+  border-color: var(--primary);
+  transform: scale(1.05);
+}
+
+.coll-photo-footer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+}
+
+.coll-photo-label {
+  font-size: 10px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.coll-photo-delete-btn {
+  font-size: 9px;
+  padding: 1px 5px;
+  border: 1px solid #E53E3E;
+  background: transparent;
+  color: #E53E3E;
+  border-radius: var(--radius);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.coll-photo-delete-btn:active {
+  background: #E53E3E;
+  color: #fff;
+}
+
+/* ── Photo overlay / lightbox ── */
+
+.coll-photo-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.coll-photo-overlay-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+}
+
+.coll-photo-overlay-title {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.coll-photo-overlay-close {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 28px;
+  cursor: pointer;
+  padding: 0 8px;
+  line-height: 1;
+}
+
+.coll-photo-overlay img {
+  max-width: 90vw;
+  max-height: 85vh;
+  object-fit: contain;
+  border-radius: var(--radius);
+}
+
+/* ── Responsive ── */
+
+@media (max-width: 600px) {
+  .coll-header-right {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+
+  .coll-summary {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .coll-summary-dot {
+    display: none;
+  }
+
+  .coll-kringen-table th,
+  .coll-kringen-table td {
+    padding: 6px 6px;
+    font-size: 12px;
+  }
+}

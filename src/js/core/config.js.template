@@ -27,6 +27,12 @@ const CONFIG = Object.freeze({
   // Upload form (full URL — different base)
   WEBHOOK_UPLOAD_FORM:    "${WEBHOOK_UPLOAD_FORM}",
 
+  // Collectors (fase data — collectoren + kringen)
+  WEBHOOK_COLLECTORS:     "${WEBHOOK_COLLECTORS}",
+
   // PDF upload (project leaders only)
   WEBHOOK_PDF_UPLOAD:     "${WEBHOOK_PDF_UPLOAD}",
+
+  // Collector photos (upload to server, not Odoo)
+  WEBHOOK_COLLECTOR_PHOTOS:       "${WEBHOOK_COLLECTOR_PHOTOS}",
 });

@@ -371,16 +371,46 @@ const TaskList = (() => {
     TaskDetailView.render(task);
     TaskDetailView.renderTeam(allTasks);
     TaskDetailView.setLoadingPdfs();
-    Documents.init(task);
+    Collectors.init();
 
     // project_id is already in the task list response
     if (task.project_id) {
       TaskDetailView.setProjectId(task.project_id);
-      Documents.setProjectId(task.project_id);
 
-      // Fetch documents/PDFs by project_id
+      // Pass project name so collector photos use a readable directory name
+      let pName = task.project_name || "";
+      if (!pName && Array.isArray(task.project_id) && task.project_id[1]) {
+        const raw = task.project_id[1];
+        const sep = raw.indexOf(" - S");
+        pName = sep > 0 ? raw.substring(0, sep) : raw;
+      }
+      if (pName) Collectors.setProjectName(pName);
+
+      Collectors.setProjectId(task.project_id);
+
+      // Fetch task info and documents in parallel (two separate n8n flows)
+      const params = { id: task.project_id, task_id: task.id };
+      const infoPromise = Api.get(`${CONFIG.WEBHOOK_TASKS}/task-info`, params);
+      const docsPromise = Api.get(`${CONFIG.WEBHOOK_TASKS}/task-docs`, params);
+
+      // Task info comes back fast — render description immediately
       try {
-        const res = await Api.get(`${CONFIG.WEBHOOK_TASKS}/task`, { id: task.project_id });
+        const res = await infoPromise;
+        if (res.ok) {
+          const data = await res.json();
+          const payload = Array.isArray(data) ? data[0] : (data?.data?.[0] || data);
+          if (payload?.description !== undefined) {
+            task.description = payload.description;
+            TaskDetailView.render(task);
+          }
+        }
+      } catch (err) {
+        console.error("[tasks] Task info fetch error:", err);
+      }
+
+      // Documents come back slower — render PDFs when ready
+      try {
+        const res = await docsPromise;
         if (res.ok) {
           const data = await res.json();
           const payload = Array.isArray(data) ? data[0] : (data?.data?.[0] || data);

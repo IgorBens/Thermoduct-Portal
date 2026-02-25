@@ -14,7 +14,7 @@ const TaskDetailView = (() => {
     </div>
     <div id="taskDetail"></div>
     <div class="card" id="teamCard" style="display:none">
-      <div class="section-title">Ingepland op deze werf</div>
+      <div class="section-title">Scheduled on this site</div>
       <div id="teamList" class="hint">&mdash;</div>
     </div>
     <div class="card">
@@ -27,8 +27,8 @@ const TaskDetailView = (() => {
       <div id="pdfs" class="hint">&mdash;</div>
     </div>
     <div class="card">
-      <div class="section-title">Documents</div>
-      <div id="docContainer" class="hint">Loading project data...</div>
+      <div class="section-title">Collectors</div>
+      <div id="collectorContainer" class="hint">Loading collectors...</div>
     </div>
   `;
 
@@ -107,8 +107,6 @@ const TaskDetailView = (() => {
     input.type = "file";
     input.accept = ".pdf,.jpg,.jpeg,.png,.heic,.heif";
     input.multiple = true;
-    // capture="environment" lets mobile open the camera directly
-    input.capture = "environment";
     input.addEventListener("change", () => {
       if (input.files.length > 0) handlePdfFiles(Array.from(input.files));
     });
@@ -137,16 +135,20 @@ const TaskDetailView = (() => {
 
     if (validFiles.length === 0) return;
 
-    // Upload all files and wait for every one to finish
-    const results = await Promise.allSettled(
-      validFiles.map(file => uploadPdf(file))
-    );
-
-    const anySuccess = results.some(r => r.status === "fulfilled" && r.value === true);
-
-    // Single refresh after all uploads complete (with a small delay for backend processing)
-    if (anySuccess) {
-      setTimeout(() => refreshPdfs(), 800);
+    // Upload files sequentially with a delay so Odoo has time to commit the folder
+    console.log(`[taskDetail] uploading ${validFiles.length} files SEQUENTIALLY`);
+    for (let i = 0; i < validFiles.length; i++) {
+      // Wait 3s between uploads so Odoo can register the newly created folder
+      if (i > 0) {
+        console.log(`[taskDetail] waiting 3s for Odoo to sync…`);
+        await new Promise(r => setTimeout(r, 3000));
+      }
+      const file = validFiles[i];
+      console.log(`[taskDetail] starting upload ${i + 1}/${validFiles.length}: ${file.name}`);
+      try {
+        await uploadPdf(file);
+        console.log(`[taskDetail] finished upload ${i + 1}/${validFiles.length}: ${file.name}`);
+      } catch { /* individual errors already handled in uploadPdf */ }
     }
   }
 
@@ -195,6 +197,9 @@ const TaskDetailView = (() => {
 
       if (res.ok && result.success !== false) {
         showUploadStatus(file.name, "success", "Uploaded!");
+
+        // Optimistically add the file to the UI immediately
+        appendPdfRow({ name: file.name, mimetype: file.type || "application/pdf", data: base64 });
         return true;
       } else {
         showUploadStatus(file.name, "error", result.message || "Upload failed");
@@ -208,69 +213,53 @@ const TaskDetailView = (() => {
     }
   }
 
-  function fileToBase64(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        // result is "data:application/pdf;base64,AAAA…" — strip the prefix
-        const base64 = reader.result.split(",")[1];
-        resolve(base64);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
-
   async function refreshTask() {
-    if (!currentTask) return;
+    if (!currentTask || !currentProjectId) return;
 
     const btn = document.getElementById("taskRefreshBtn");
     if (btn) { btn.disabled = true; btn.textContent = "Refreshing\u2026"; }
 
     setLoadingPdfs();
 
-    try {
-      // Re-fetch task list to get fresh task data (description, dates, etc.)
-      // past_days=0 keeps it scoped to upcoming only (task detail refresh)
-      const tasksRes = await Api.get(`${CONFIG.WEBHOOK_TASKS}/tasks`, { past_days: 0 });
-      if (tasksRes.ok) {
-        const tasksData = await tasksRes.json();
-        const tasks = Array.isArray(tasksData) ? tasksData
-          : (tasksData?.data && Array.isArray(tasksData.data)) ? tasksData.data
-          : [];
-        // Match by id + date to avoid picking a different day's task
-        // for the same project (e.g. yesterday vs today)
-        const currentDate = getTaskDate(currentTask);
-        const fresh = tasks.find(t => t.id === currentTask.id && getTaskDate(t) === currentDate)
-          || tasks.find(t => t.id === currentTask.id);
-        if (fresh) {
-          currentTask = fresh;
-          render(fresh);
-        }
-        renderTeam(tasks);
-      }
+    const params = { id: currentProjectId, task_id: currentTask?.id };
+    const infoPromise = Api.get(`${CONFIG.WEBHOOK_TASKS}/task-info`, params);
+    const docsPromise = Api.get(`${CONFIG.WEBHOOK_TASKS}/task-docs`, params);
 
-      // Re-fetch PDFs + docs
-      if (currentProjectId) {
-        const res = await Api.get(`${CONFIG.WEBHOOK_TASKS}/task`, { id: currentProjectId });
-        if (res.ok) {
-          const data = await res.json();
-          const payload = Array.isArray(data) ? data[0] : (data?.data?.[0] || data);
-          renderPdfs(payload?.pdfs || []);
+    // Task info renders immediately
+    try {
+      const res = await infoPromise;
+      if (res.ok) {
+        const data = await res.json();
+        const payload = Array.isArray(data) ? data[0] : (data?.data?.[0] || data);
+        if (payload?.description !== undefined) {
+          currentTask.description = payload.description;
         }
+        render(currentTask);
       }
     } catch (err) {
-      console.error("[taskDetail] Task refresh error:", err);
-    } finally {
-      if (btn) { btn.disabled = false; btn.textContent = "Refresh"; }
+      console.error("[taskDetail] Task info refresh error:", err);
     }
+
+    // Documents render when ready
+    try {
+      const res = await docsPromise;
+      if (res.ok) {
+        const data = await res.json();
+        const payload = Array.isArray(data) ? data[0] : (data?.data?.[0] || data);
+        renderPdfs(payload?.pdfs || []);
+      }
+    } catch (err) {
+      console.error("[taskDetail] Document refresh error:", err);
+    }
+
+    if (btn) { btn.disabled = false; btn.textContent = "Refresh"; }
   }
 
   async function refreshPdfs() {
     if (!currentProjectId) return;
 
     try {
-      const res = await Api.get(`${CONFIG.WEBHOOK_TASKS}/task`, { id: currentProjectId });
+      const res = await Api.get(`${CONFIG.WEBHOOK_TASKS}/task-docs`, { id: currentProjectId, task_id: currentTask?.id });
       const text = await res.text();
 
       let data;
@@ -378,7 +367,102 @@ const TaskDetailView = (() => {
     el.appendChild(card);
   }
 
+  // ── Delete PDF from Odoo ──
+
+  async function deletePdf(filename, btnEl) {
+    if (!confirm(`Delete "${filename}"?`)) return;
+    if (!currentProjectId) return;
+
+    btnEl.disabled = true;
+    btnEl.textContent = "\u2026";
+
+    try {
+      const res = await Api.delete(CONFIG.WEBHOOK_PDF_UPLOAD, {
+        project_id: currentProjectId,
+        filename,
+      });
+      const result = await res.json();
+
+      if (res.ok && result.success !== false) {
+        const row = btnEl.closest(".pdf-row");
+        row?.remove();
+
+        // Show "No files." when list is empty
+        const el = document.getElementById("pdfs");
+        if (el && el.children.length === 0) {
+          el.className = "hint";
+          el.textContent = "No files.";
+        }
+      } else {
+        btnEl.disabled = false;
+        btnEl.textContent = "Delete";
+      }
+    } catch (err) {
+      console.error("[taskDetail] PDF delete error:", err);
+      btnEl.disabled = false;
+      btnEl.textContent = "Delete";
+    }
+  }
+
   // ── Render PDFs ──
+
+  function buildPdfRow(p, index) {
+    const mime = p.mimetype || "application/pdf";
+    const name = p.name || `File ${index + 1}`;
+    const image = isImageMime(mime);
+
+    const row = document.createElement("div");
+    row.className = "pdf-row";
+
+    // Show thumbnail for images
+    if (image && p.data) {
+      const thumb = document.createElement("img");
+      thumb.className = "pdf-row-thumb";
+      thumb.src = `data:${mime};base64,${p.data}`;
+      thumb.alt = name;
+      thumb.addEventListener("click", () => viewFile(p.data, mime));
+      row.appendChild(thumb);
+    }
+
+    const info = document.createElement("div");
+    const nameDiv = document.createElement("div");
+    nameDiv.className = "pdf-name";
+    nameDiv.textContent = name;
+    info.appendChild(nameDiv);
+
+    const meta = document.createElement("div");
+    meta.className = "pdf-meta";
+    meta.textContent = mime;
+    info.appendChild(meta);
+
+    row.appendChild(info);
+
+    const btns = document.createElement("div");
+    btns.style.cssText = "display:flex;gap:8px";
+
+    const viewBtn = document.createElement("button");
+    viewBtn.textContent = "View";
+    viewBtn.className = "secondary btn-sm";
+    viewBtn.addEventListener("click", () => viewFile(p.data, mime));
+    btns.appendChild(viewBtn);
+
+    const dlBtn = document.createElement("button");
+    dlBtn.textContent = "Download";
+    dlBtn.className = "btn-sm";
+    dlBtn.addEventListener("click", () => downloadFile(p.data, name, mime));
+    btns.appendChild(dlBtn);
+
+    if (Auth.hasRole("projectleider")) {
+      const delBtn = document.createElement("button");
+      delBtn.textContent = "Delete";
+      delBtn.className = "danger btn-sm";
+      delBtn.addEventListener("click", () => deletePdf(name, delBtn));
+      btns.appendChild(delBtn);
+    }
+
+    row.appendChild(btns);
+    return row;
+  }
 
   function renderPdfs(pdfs) {
     const el = document.getElementById("pdfs");
@@ -392,56 +476,22 @@ const TaskDetailView = (() => {
     }
 
     el.className = "";
+    pdfs.forEach((p, i) => el.appendChild(buildPdfRow(p, i)));
+  }
 
-    pdfs.forEach((p, i) => {
-      const mime = p.mimetype || "application/pdf";
-      const name = p.name || `File ${i + 1}`;
-      const image = isImageMime(mime);
+  // Optimistically add a single file to the PDF list after upload
+  function appendPdfRow(fileObj) {
+    const el = document.getElementById("pdfs");
+    if (!el) return;
 
-      const row = document.createElement("div");
-      row.className = "pdf-row";
+    // If the list currently shows the "No files." placeholder, clear it
+    if (el.classList.contains("hint")) {
+      el.innerHTML = "";
+      el.className = "";
+    }
 
-      // Show thumbnail for images
-      if (image && p.data) {
-        const thumb = document.createElement("img");
-        thumb.className = "pdf-row-thumb";
-        thumb.src = `data:${mime};base64,${p.data}`;
-        thumb.alt = name;
-        thumb.addEventListener("click", () => viewFile(p.data, mime));
-        row.appendChild(thumb);
-      }
-
-      const info = document.createElement("div");
-      const nameDiv = document.createElement("div");
-      nameDiv.className = "pdf-name";
-      nameDiv.textContent = name;
-      info.appendChild(nameDiv);
-
-      const meta = document.createElement("div");
-      meta.className = "pdf-meta";
-      meta.textContent = mime;
-      info.appendChild(meta);
-
-      row.appendChild(info);
-
-      const btns = document.createElement("div");
-      btns.style.cssText = "display:flex;gap:8px";
-
-      const viewBtn = document.createElement("button");
-      viewBtn.textContent = "View";
-      viewBtn.className = "secondary btn-sm";
-      viewBtn.addEventListener("click", () => viewFile(p.data, mime));
-      btns.appendChild(viewBtn);
-
-      const dlBtn = document.createElement("button");
-      dlBtn.textContent = "Download";
-      dlBtn.className = "btn-sm";
-      dlBtn.addEventListener("click", () => downloadFile(p.data, name, mime));
-      btns.appendChild(dlBtn);
-
-      row.appendChild(btns);
-      el.appendChild(row);
-    });
+    const count = el.querySelectorAll(".pdf-row").length;
+    el.appendChild(buildPdfRow(fileObj, count));
   }
 
   // ── Team / co-workers ──
