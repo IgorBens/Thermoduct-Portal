@@ -61,11 +61,9 @@ const Lookups = (() => {
     // Nothing missing at all — skip
     if (missing.length === 0) return;
 
-    // Cache was recently populated — trust it, skip the network call.
-    // New IDs that appeared since the last fetch will be resolved on
-    // the next load once the TTL expires (or after a manual Refresh).
-    if (isFresh(type)) return;
-
+    // Always fetch genuinely missing IDs — even if the cache TTL is fresh.
+    // This ensures new installers / addresses / sales orders added in Odoo
+    // show up immediately on the next browser refresh.
     try {
       const res = await Api.get(endpoint, { ids: missing.join(",") });
       if (!res.ok) return;

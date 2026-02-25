@@ -81,10 +81,11 @@ const TaskList = (() => {
       leaderEl.value = savedLeaderFilter;
     }
 
-    // Refresh button — re-fetches tasks but keeps lookup cache (installers etc.)
+    // Refresh button — full reset: clears task + lookup caches, re-fetches everything
     document.getElementById("tasksRefreshBtn").addEventListener("click", () => {
       allTasks = [];
       try { localStorage.removeItem(CACHE_KEY); } catch { /* ok */ }
+      Lookups.clear();
       fetchTasks();
     });
 
