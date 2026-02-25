@@ -16,7 +16,7 @@ const Collectors = (() => {
     projectId = pid;
     const container = document.getElementById("collectorContainer");
     if (!container) return;
-    container.innerHTML = '<p class="hint">Collectoren laden...</p>';
+    container.innerHTML = '<p class="hint">Loading collectors...</p>';
 
     try {
       const res = await Api.get(CONFIG.WEBHOOK_COLLECTORS, { project_id: pid });
@@ -27,14 +27,14 @@ const Collectors = (() => {
         : (data?.collectoren || data?.data || []);
 
       if (!collectoren || collectoren.length === 0) {
-        container.innerHTML = '<p class="hint">Geen collectoren gevonden.</p>';
+        container.innerHTML = '<p class="hint">No collectors found.</p>';
         return;
       }
 
       renderCollectors(collectoren, container);
     } catch (err) {
       console.error("[collectors] Fetch error:", err);
-      container.innerHTML = '<p class="hint">Fout bij laden collectoren.</p>';
+      container.innerHTML = '<p class="hint">Error loading collectors.</p>';
     }
   }
 
@@ -50,15 +50,15 @@ const Collectors = (() => {
     const totalKringen = collectoren.reduce((sum, c) => sum + (c.kringen?.length || 0), 0);
     summary.innerHTML = `
       <span class="coll-summary-item">
-        <strong>${collectoren.length}</strong> collector${collectoren.length === 1 ? "" : "en"}
+        <strong>${collectoren.length}</strong> collector${collectoren.length === 1 ? "" : "s"}
       </span>
       <span class="coll-summary-dot">&middot;</span>
       <span class="coll-summary-item">
-        <strong>${totalKringen}</strong> kring${totalKringen === 1 ? "" : "en"}
+        <strong>${totalKringen}</strong> circuit${totalKringen === 1 ? "" : "s"}
       </span>
       <span class="coll-summary-dot">&middot;</span>
       <span class="coll-summary-item">
-        <strong>${totalM2.toFixed(1)}</strong> m&sup2; totaal
+        <strong>${totalM2.toFixed(1)}</strong> m&sup2; total
       </span>`;
     container.appendChild(summary);
 
@@ -68,13 +68,13 @@ const Collectors = (() => {
 
     if (hasBlok) {
       const blokGroups = groupBy(collectoren, "blok");
-      Object.entries(blokGroups).forEach(([blok, blokCollectoren]) => {
-        const blokSection = buildGroupSection(`Blok ${blok}`, "coll-group-blok", () => {
+      sortedEntries(blokGroups).forEach(([blok, blokCollectoren]) => {
+        const blokSection = buildGroupSection(`Block ${blok}`, "coll-group-blok", () => {
           const inner = document.createDocumentFragment();
           if (hasVerdiep) {
             const verdiepGroups = groupBy(blokCollectoren, "verdiep");
-            Object.entries(verdiepGroups).forEach(([verdiep, vCollectoren]) => {
-              inner.appendChild(buildGroupSection(`Verdiep ${verdiep}`, "coll-group-verdiep", () => {
+            sortedEntries(verdiepGroups).forEach(([verdiep, vCollectoren]) => {
+              inner.appendChild(buildGroupSection(`Floor ${verdiep}`, "coll-group-verdiep", () => {
                 const frag = document.createDocumentFragment();
                 vCollectoren.forEach((c, i) => frag.appendChild(buildCollectorCard(c, i)));
                 return frag;
@@ -89,8 +89,8 @@ const Collectors = (() => {
       });
     } else if (hasVerdiep) {
       const verdiepGroups = groupBy(collectoren, "verdiep");
-      Object.entries(verdiepGroups).forEach(([verdiep, vCollectoren]) => {
-        container.appendChild(buildGroupSection(`Verdiep ${verdiep}`, "coll-group-verdiep", () => {
+      sortedEntries(verdiepGroups).forEach(([verdiep, vCollectoren]) => {
+        container.appendChild(buildGroupSection(`Floor ${verdiep}`, "coll-group-verdiep", () => {
           const frag = document.createDocumentFragment();
           vCollectoren.forEach((c, i) => frag.appendChild(buildCollectorCard(c, i)));
           return frag;
@@ -110,11 +110,21 @@ const Collectors = (() => {
     arr.forEach(item => {
       const val = item[key] !== undefined && item[key] !== null && item[key] !== ""
         ? String(item[key])
-        : "Onbekend";
+        : "Unknown";
       if (!groups[val]) groups[val] = [];
       groups[val].push(item);
     });
     return groups;
+  }
+
+  /** Sort group entries so numeric keys go low→high, non-numeric alphabetically. */
+  function sortedEntries(groups) {
+    return Object.entries(groups).sort(([a], [b]) => {
+      const na = parseFloat(a);
+      const nb = parseFloat(b);
+      if (!isNaN(na) && !isNaN(nb)) return na - nb;
+      return a.localeCompare(b);
+    });
   }
 
   function buildGroupSection(title, className, buildContent) {
@@ -161,15 +171,15 @@ const Collectors = (() => {
         <div class="coll-header-info">
           <span class="coll-header-naam">${escapeHtml(naam)}</span>
           <span class="coll-header-meta">
-            ${collector.blok ? `Blok ${escapeHtml(String(collector.blok))}` : ""}
+            ${collector.blok ? `Block ${escapeHtml(String(collector.blok))}` : ""}
             ${collector.blok && collector.verdiep ? " &middot; " : ""}
-            ${collector.verdiep !== undefined && collector.verdiep !== null ? `Verdiep ${escapeHtml(String(collector.verdiep))}` : ""}
+            ${collector.verdiep !== undefined && collector.verdiep !== null ? `Floor ${escapeHtml(String(collector.verdiep))}` : ""}
           </span>
         </div>
       </div>
       <div class="coll-header-right">
         <span class="coll-badge">${m2.toFixed(1)} m&sup2;</span>
-        <span class="coll-badge coll-badge--accent">${kringenCount} kring${kringenCount === 1 ? "" : "en"}</span>
+        <span class="coll-badge coll-badge--accent">${kringenCount} circuit${kringenCount === 1 ? "" : "s"}</span>
       </div>`;
 
     header.addEventListener("click", () => {
@@ -188,17 +198,17 @@ const Collectors = (() => {
     if (kringenCount > 0) {
       body.appendChild(buildKringenTable(collector.kringen));
     } else {
-      body.innerHTML = '<p class="hint" style="margin:0;padding:8px 0">Geen kringen.</p>';
+      body.innerHTML = '<p class="hint" style="margin:0;padding:8px 0">No circuits.</p>';
     }
 
     // Photo section — build unique folder key from blok + verdiep + name
     const photoName = collector.naam || collector.name || `Collector ${index + 1}`;
     const parts = [];
     if (collector.blok !== undefined && collector.blok !== null && collector.blok !== "") {
-      parts.push(`Blok ${collector.blok}`);
+      parts.push(`Block ${collector.blok}`);
     }
     if (collector.verdiep !== undefined && collector.verdiep !== null && collector.verdiep !== "") {
-      parts.push(`Verdiep ${collector.verdiep}`);
+      parts.push(`Floor ${collector.verdiep}`);
     }
     parts.push(photoName);
     const collectorPhotoId = parts.join(" - ");
@@ -217,11 +227,11 @@ const Collectors = (() => {
     // Header row with title + upload button
     const header = document.createElement("div");
     header.className = "coll-photos-header";
-    header.innerHTML = `<span class="coll-photos-title">Foto's</span>`;
+    header.innerHTML = `<span class="coll-photos-title">Photos</span>`;
 
     const uploadBtn = document.createElement("button");
     uploadBtn.className = "coll-photos-upload-btn";
-    uploadBtn.textContent = "Foto toevoegen";
+    uploadBtn.textContent = "Add photo";
     uploadBtn.addEventListener("click", () => triggerPhotoUpload(collectorId, gallery, uploadBtn));
     header.appendChild(uploadBtn);
 
@@ -235,7 +245,7 @@ const Collectors = (() => {
     // Gallery grid
     const gallery = document.createElement("div");
     gallery.className = "coll-photos-gallery";
-    gallery.innerHTML = '<span class="hint" style="font-size:12px">Laden...</span>';
+    gallery.innerHTML = '<span class="hint" style="font-size:12px">Loading...</span>';
     section.appendChild(gallery);
 
     // Fetch existing photos
@@ -260,14 +270,14 @@ const Collectors = (() => {
       renderPhotoGallery(photos, gallery, collectorId);
     } catch {
       // Silently show empty state (webhook may not be configured yet)
-      gallery.innerHTML = '<span class="hint" style="font-size:12px">Nog geen foto\'s.</span>';
+      gallery.innerHTML = '<span class="hint" style="font-size:12px">No photos yet.</span>';
     }
   }
 
   function renderPhotoGallery(photos, gallery, collectorId) {
     gallery.innerHTML = "";
     if (!photos || photos.length === 0) {
-      gallery.innerHTML = '<span class="hint" style="font-size:12px">Nog geen foto\'s.</span>';
+      gallery.innerHTML = '<span class="hint" style="font-size:12px">No photos yet.</span>';
       return;
     }
 
@@ -282,7 +292,7 @@ const Collectors = (() => {
       } else if (photo.url) {
         img.src = photo.url;
       }
-      img.alt = photo.name || "Foto";
+      img.alt = photo.name || "Photo";
       img.addEventListener("click", () => {
         let src;
         if (photo.data) {
@@ -290,7 +300,7 @@ const Collectors = (() => {
         } else if (photo.url) {
           src = photo.url;
         }
-        if (src) showPhotoOverlay(src, photo.name || "Foto");
+        if (src) showPhotoOverlay(src, photo.name || "Photo");
       });
 
       const imgWrap = document.createElement("div");
@@ -312,7 +322,7 @@ const Collectors = (() => {
 
       const deleteBtn = document.createElement("button");
       deleteBtn.className = "coll-photo-delete-btn";
-      deleteBtn.textContent = "Verwijder";
+      deleteBtn.textContent = "Delete";
       deleteBtn.addEventListener("click", () => {
         deletePhoto(photo.name, collectorId, gallery);
       });
@@ -324,10 +334,10 @@ const Collectors = (() => {
   }
 
   async function deletePhoto(filename, collectorId, gallery) {
-    if (!confirm(`"${filename}" verwijderen?`)) return;
+    if (!confirm(`Delete "${filename}"?`)) return;
 
     const statusEl = gallery.parentElement.querySelector(".coll-photos-status");
-    showPhotoStatus(statusEl, "uploading", `${filename} verwijderen...`);
+    showPhotoStatus(statusEl, "uploading", `Deleting ${filename}...`);
 
     try {
       const payload = {
@@ -339,14 +349,14 @@ const Collectors = (() => {
       const res = await Api.delete(CONFIG.WEBHOOK_COLLECTOR_PHOTOS, payload);
       const result = await res.json();
       if (res.ok && result.success !== false) {
-        showPhotoStatus(statusEl, "success", `${filename} verwijderd`);
+        showPhotoStatus(statusEl, "success", `${filename} deleted`);
         loadPhotos(collectorId, gallery);
       } else {
-        showPhotoStatus(statusEl, "error", result.message || "Verwijderen mislukt");
+        showPhotoStatus(statusEl, "error", result.message || "Delete failed");
       }
     } catch (err) {
       console.error("[collectors] Photo delete error:", err);
-      showPhotoStatus(statusEl, "error", "Netwerkfout bij verwijderen");
+      showPhotoStatus(statusEl, "error", "Network error while deleting");
     }
     setTimeout(() => { if (statusEl) statusEl.innerHTML = ""; }, 4000);
   }
@@ -388,16 +398,16 @@ const Collectors = (() => {
     // Validate: only images
     const validFiles = files.filter(f => /^image\//i.test(f.type));
     if (validFiles.length === 0) {
-      showPhotoStatus(statusEl, "error", "Alleen afbeeldingen toegestaan.");
+      showPhotoStatus(statusEl, "error", "Only images are allowed.");
       return;
     }
 
     btn.disabled = true;
-    btn.textContent = "Uploaden...";
+    btn.textContent = "Uploading...";
 
     let anySuccess = false;
     for (const file of validFiles) {
-      showPhotoStatus(statusEl, "uploading", `${file.name} uploaden...`);
+      showPhotoStatus(statusEl, "uploading", `Uploading ${file.name}...`);
       try {
         const base64 = await fileToBase64(file);
         const payload = {
@@ -410,19 +420,19 @@ const Collectors = (() => {
         const res = await Api.post(CONFIG.WEBHOOK_COLLECTOR_PHOTOS, payload);
         const result = await res.json();
         if (res.ok && result.success !== false) {
-          showPhotoStatus(statusEl, "success", `${file.name} geupload!`);
+          showPhotoStatus(statusEl, "success", `${file.name} uploaded!`);
           anySuccess = true;
         } else {
-          showPhotoStatus(statusEl, "error", result.message || `${file.name} mislukt`);
+          showPhotoStatus(statusEl, "error", result.message || `${file.name} failed`);
         }
       } catch (err) {
         console.error("[collectors] Photo upload error:", err);
-        showPhotoStatus(statusEl, "error", `${file.name} — netwerkfout`);
+        showPhotoStatus(statusEl, "error", `${file.name} — network error`);
       }
     }
 
     btn.disabled = false;
-    btn.textContent = "Foto toevoegen";
+    btn.textContent = "Add photo";
 
     // Refresh gallery after uploads
     if (anySuccess) {
@@ -449,9 +459,9 @@ const Collectors = (() => {
     thead.innerHTML = `
       <tr>
         <th>#</th>
-        <th>Systeem</th>
-        <th>Legpatroon</th>
-        <th>Lengte</th>
+        <th>System</th>
+        <th>Pattern</th>
+        <th>Length</th>
       </tr>`;
     table.appendChild(thead);
 
@@ -474,7 +484,7 @@ const Collectors = (() => {
       const tfoot = document.createElement("tfoot");
       tfoot.innerHTML = `
         <tr>
-          <td colspan="3" class="coll-kring-total-label">Totale kringlengte</td>
+          <td colspan="3" class="coll-kring-total-label">Total circuit length</td>
           <td class="coll-kring-lengte"><strong>${totalLength.toFixed(1)} m</strong></td>
         </tr>`;
       table.appendChild(tfoot);
@@ -490,7 +500,7 @@ const Collectors = (() => {
       projectId = null;
       projectName = null;
       const container = document.getElementById("collectorContainer");
-      if (container) container.innerHTML = '<p class="hint">Collectoren laden...</p>';
+      if (container) container.innerHTML = '<p class="hint">Loading collectors...</p>';
     },
 
     setProjectId(pid) {

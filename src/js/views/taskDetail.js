@@ -27,8 +27,8 @@ const TaskDetailView = (() => {
       <div id="pdfs" class="hint">&mdash;</div>
     </div>
     <div class="card">
-      <div class="section-title">Collectoren</div>
-      <div id="collectorContainer" class="hint">Collectoren laden...</div>
+      <div class="section-title">Collectors</div>
+      <div id="collectorContainer" class="hint">Loading collectors...</div>
     </div>
   `;
 
@@ -214,47 +214,23 @@ const TaskDetailView = (() => {
   }
 
   async function refreshTask() {
-    if (!currentTask) return;
+    if (!currentTask || !currentProjectId) return;
 
     const btn = document.getElementById("taskRefreshBtn");
     if (btn) { btn.disabled = true; btn.textContent = "Refreshing\u2026"; }
 
-    setLoadingPdfs();
-
     try {
-      // Re-fetch task list to get fresh task data (description, dates, etc.)
-      // past_days=0 keeps it scoped to upcoming only (task detail refresh)
-      const tasksRes = await Api.get(`${CONFIG.WEBHOOK_TASKS}/tasks`, { past_days: 0 });
-      if (tasksRes.ok) {
-        const tasksData = await tasksRes.json();
-        const tasks = Array.isArray(tasksData) ? tasksData
-          : (tasksData?.data && Array.isArray(tasksData.data)) ? tasksData.data
-          : [];
-        // Match by id + date to avoid picking a different day's task
-        // for the same project (e.g. yesterday vs today)
-        const currentDate = getTaskDate(currentTask);
-        const fresh = tasks.find(t => t.id === currentTask.id && getTaskDate(t) === currentDate)
-          || tasks.find(t => t.id === currentTask.id);
-        if (fresh) {
-          currentTask = fresh;
-          render(fresh);
-        }
-        renderTeam(tasks);
-      }
+      // Re-fetch task detail (description, PDFs) from the single-task endpoint
+      const res = await Api.get(`${CONFIG.WEBHOOK_TASKS}/task`, { id: currentProjectId });
+      if (res.ok) {
+        const data = await res.json();
+        const payload = Array.isArray(data) ? data[0] : (data?.data?.[0] || data);
 
-      // Re-fetch PDFs + docs
-      if (currentProjectId) {
-        const res = await Api.get(`${CONFIG.WEBHOOK_TASKS}/task`, { id: currentProjectId });
-        if (res.ok) {
-          const data = await res.json();
-          const payload = Array.isArray(data) ? data[0] : (data?.data?.[0] || data);
-          renderPdfs(payload?.pdfs || []);
+        // Merge description into current task and re-render
+        if (payload?.description !== undefined) {
+          currentTask.description = payload.description;
         }
-      }
-
-      // Re-fetch collectors + photos
-      if (typeof Collectors !== "undefined") {
-        Collectors.refresh();
+        render(currentTask);
       }
     } catch (err) {
       console.error("[taskDetail] Task refresh error:", err);
@@ -378,7 +354,7 @@ const TaskDetailView = (() => {
   // ── Delete PDF from Odoo ──
 
   async function deletePdf(filename, btnEl) {
-    if (!confirm(`"${filename}" verwijderen?`)) return;
+    if (!confirm(`Delete "${filename}"?`)) return;
     if (!currentProjectId) return;
 
     btnEl.disabled = true;
