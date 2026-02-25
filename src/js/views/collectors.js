@@ -293,29 +293,32 @@ const Collectors = (() => {
         if (src) showPhotoOverlay(src, photo.name || "Foto");
       });
 
-      const deleteBtn = document.createElement("button");
-      deleteBtn.className = "coll-photo-delete";
-      deleteBtn.innerHTML = "&times;";
-      deleteBtn.title = "Verwijderen";
-      deleteBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        deletePhoto(photo.name, collectorId, gallery);
-      });
-
       const imgWrap = document.createElement("div");
       imgWrap.className = "coll-photo-img-wrap";
       imgWrap.appendChild(img);
-      imgWrap.appendChild(deleteBtn);
       thumb.appendChild(imgWrap);
+
+      // Footer row: label + delete button side by side
+      const footer = document.createElement("div");
+      footer.className = "coll-photo-footer";
 
       if (photo.name) {
         const label = document.createElement("span");
         label.className = "coll-photo-label";
         label.textContent = photo.name;
         label.title = photo.name;
-        thumb.appendChild(label);
+        footer.appendChild(label);
       }
 
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "coll-photo-delete-btn";
+      deleteBtn.textContent = "Verwijder";
+      deleteBtn.addEventListener("click", () => {
+        deletePhoto(photo.name, collectorId, gallery);
+      });
+      footer.appendChild(deleteBtn);
+
+      thumb.appendChild(footer);
       gallery.appendChild(thumb);
     });
   }
@@ -371,7 +374,6 @@ const Collectors = (() => {
     input.type = "file";
     input.accept = "image/*";
     input.multiple = true;
-    input.capture = "environment";
     input.addEventListener("change", () => {
       if (input.files.length > 0) {
         handlePhotoUpload(Array.from(input.files), collectorId, gallery, btn);

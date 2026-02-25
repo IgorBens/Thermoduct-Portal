@@ -107,8 +107,6 @@ const TaskDetailView = (() => {
     input.type = "file";
     input.accept = ".pdf,.jpg,.jpeg,.png,.heic,.heif";
     input.multiple = true;
-    // capture="environment" lets mobile open the camera directly
-    input.capture = "environment";
     input.addEventListener("change", () => {
       if (input.files.length > 0) handlePdfFiles(Array.from(input.files));
     });
