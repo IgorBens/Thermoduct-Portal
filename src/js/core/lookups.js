@@ -3,6 +3,10 @@
 // Batch-fetches and caches installer names, sales order project names,
 // and delivery addresses via n8n lookup webhooks (proxied through API_BASE_URL).
 //
+// Caches are persisted in localStorage with a TTL.  While the TTL is
+// valid, no network request is made — the in-memory data is used as-is.
+// Only genuinely missing IDs (never seen before) trigger a fetch.
+//
 // Usage (from tasks.js after fetching tasks):
 //   await Lookups.resolveForTasks(tasks);
 //   Lookups.enrichTasks(tasks);
@@ -14,11 +18,26 @@ const Lookups = (() => {
     addresses:   "lookupAddresses",
   };
 
+  // How long each cache stays valid (ms)
+  const TTL = {
+    installers:  4 * 60 * 60 * 1000,  // 4 hours — names rarely change
+    salesOrders: 2 * 60 * 60 * 1000,  // 2 hours
+    addresses:   2 * 60 * 60 * 1000,  // 2 hours
+  };
+
   let installers  = {};
   let salesOrders = {};
   let addresses   = {};
 
+  // Timestamps (epoch ms) of the last successful fetch per type
+  let timestamps = { installers: 0, salesOrders: 0, addresses: 0 };
+
   function loadAll() {
+    try {
+      const raw = localStorage.getItem("lookupTimestamps");
+      if (raw) timestamps = JSON.parse(raw);
+    } catch { timestamps = { installers: 0, salesOrders: 0, addresses: 0 }; }
+
     try { installers  = JSON.parse(localStorage.getItem(CACHE_KEYS.installers))  || {}; } catch { installers  = {}; }
     try { salesOrders = JSON.parse(localStorage.getItem(CACHE_KEYS.salesOrders)) || {}; } catch { salesOrders = {}; }
     try { addresses   = JSON.parse(localStorage.getItem(CACHE_KEYS.addresses))   || {}; } catch { addresses   = {}; }
@@ -28,9 +47,24 @@ const Lookups = (() => {
     try { localStorage.setItem(key, JSON.stringify(data)); } catch { /* quota */ }
   }
 
-  async function fetchMissing(endpoint, cache, cacheKey, ids) {
+  function saveTimestamps() {
+    try { localStorage.setItem("lookupTimestamps", JSON.stringify(timestamps)); } catch { /* ok */ }
+  }
+
+  function isFresh(type) {
+    return Date.now() - (timestamps[type] || 0) < TTL[type];
+  }
+
+  async function fetchMissing(endpoint, cache, cacheKey, type, ids) {
     const missing = ids.filter(id => id && !cache[id]);
+
+    // Nothing missing at all — skip
     if (missing.length === 0) return;
+
+    // Cache was recently populated — trust it, skip the network call.
+    // New IDs that appeared since the last fetch will be resolved on
+    // the next load once the TTL expires (or after a manual Refresh).
+    if (isFresh(type)) return;
 
     try {
       const res = await Api.get(endpoint, { ids: missing.join(",") });
@@ -42,6 +76,8 @@ const Lookups = (() => {
         if (item.id) cache[item.id] = item;
       });
       save(cacheKey, cache);
+      timestamps[type] = Date.now();
+      saveTimestamps();
     } catch (err) {
       console.warn("[lookups] Fetch error:", err);
     }
@@ -70,9 +106,9 @@ const Lookups = (() => {
     const { installerIds, salesOrderIds, addressIds } = collectIds(tasks);
 
     await Promise.all([
-      installerIds.size  > 0 ? fetchMissing(CONFIG.WEBHOOK_LOOKUP_INSTALLERS,   installers,  CACHE_KEYS.installers,  [...installerIds])  : Promise.resolve(),
-      salesOrderIds.size > 0 ? fetchMissing(CONFIG.WEBHOOK_LOOKUP_SALES_ORDERS, salesOrders, CACHE_KEYS.salesOrders, [...salesOrderIds]) : Promise.resolve(),
-      addressIds.size    > 0 ? fetchMissing(CONFIG.WEBHOOK_LOOKUP_ADDRESSES,    addresses,   CACHE_KEYS.addresses,   [...addressIds])    : Promise.resolve(),
+      installerIds.size  > 0 ? fetchMissing(CONFIG.WEBHOOK_LOOKUP_INSTALLERS,   installers,  CACHE_KEYS.installers,  "installers",  [...installerIds])  : Promise.resolve(),
+      salesOrderIds.size > 0 ? fetchMissing(CONFIG.WEBHOOK_LOOKUP_SALES_ORDERS, salesOrders, CACHE_KEYS.salesOrders, "salesOrders", [...salesOrderIds]) : Promise.resolve(),
+      addressIds.size    > 0 ? fetchMissing(CONFIG.WEBHOOK_LOOKUP_ADDRESSES,    addresses,   CACHE_KEYS.addresses,   "addresses",   [...addressIds])    : Promise.resolve(),
     ]);
   }
 
@@ -104,9 +140,11 @@ const Lookups = (() => {
 
   function clear() {
     installers = {}; salesOrders = {}; addresses = {};
+    timestamps = { installers: 0, salesOrders: 0, addresses: 0 };
     Object.values(CACHE_KEYS).forEach(k => {
       try { localStorage.removeItem(k); } catch { /* ok */ }
     });
+    try { localStorage.removeItem("lookupTimestamps"); } catch { /* ok */ }
   }
 
   loadAll();

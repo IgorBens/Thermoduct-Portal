@@ -481,7 +481,16 @@ const TaskList = (() => {
       else if (data?.id !== undefined) tasks = [data];
       else tasks = [];
 
-      // 3) Resolve ID-only fields via lookup endpoints
+      // 3) Enrich from in-memory lookup cache first (instant, no network)
+      Lookups.enrichTasks(tasks);
+
+      // Render immediately with whatever names we already have cached
+      allTasks = tasks;
+      populateDateFilter(tasks);
+      populateLeaderFilter(tasks);
+      filterAndRender();
+
+      // 4) Fetch any missing lookups (skipped entirely when TTL is fresh)
       try {
         await Lookups.resolveForTasks(tasks);
         Lookups.enrichTasks(tasks);
@@ -489,16 +498,13 @@ const TaskList = (() => {
         console.warn("[tasks] Lookup enrichment failed (non-fatal):", err);
       }
 
-      // 4) Only re-render if data actually changed
-      const fresh = JSON.stringify(tasks);
-      const stale = JSON.stringify(allTasks);
-      if (fresh !== stale) {
+      // 5) Re-render only if lookups added new data
+      const enriched = JSON.stringify(tasks);
+      const current  = JSON.stringify(allTasks);
+      if (enriched !== current) {
         allTasks = tasks;
-        populateDateFilter(tasks);
-        populateLeaderFilter(tasks);
         filterAndRender();
       } else {
-        // Data unchanged — just clear the "updating…" hint
         statusEl.textContent = `${tasks.length} task${tasks.length === 1 ? "" : "s"} found.`;
       }
 
