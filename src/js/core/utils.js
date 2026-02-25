@@ -35,7 +35,7 @@ function formatDateLabel(dateStr) {
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
-  const [y, m, d] = dateStr.split("-").map(Number);
+  const [y, m, d] = dateStr.split(" ")[0].split("-").map(Number);
   const date = new Date(y, m - 1, d);
 
   if (date.getTime() === yesterday.getTime()) return "Yesterday";

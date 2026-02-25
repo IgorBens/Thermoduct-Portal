@@ -398,11 +398,14 @@ const TaskList = (() => {
       try {
         const res = await infoPromise;
         if (res.ok) {
-          const data = await res.json();
-          const payload = Array.isArray(data) ? data[0] : (data?.data?.[0] || data);
-          if (payload?.description !== undefined) {
-            task.description = payload.description;
-            TaskDetailView.render(task);
+          const text = await res.text();
+          if (text) {
+            const data = JSON.parse(text);
+            const payload = Array.isArray(data) ? data[0] : (data?.data?.[0] || data);
+            if (payload?.description !== undefined) {
+              task.description = payload.description;
+              TaskDetailView.render(task);
+            }
           }
         }
       } catch (err) {
@@ -413,9 +416,12 @@ const TaskList = (() => {
       try {
         const res = await docsPromise;
         if (res.ok) {
-          const data = await res.json();
-          const payload = Array.isArray(data) ? data[0] : (data?.data?.[0] || data);
-          TaskDetailView.renderPdfs(payload?.pdfs || []);
+          const text = await res.text();
+          if (text) {
+            const data = JSON.parse(text);
+            const payload = Array.isArray(data) ? data[0] : (data?.data?.[0] || data);
+            TaskDetailView.renderPdfs(payload?.pdfs || []);
+          }
         }
       } catch (err) {
         console.error("[tasks] Document fetch error:", err);

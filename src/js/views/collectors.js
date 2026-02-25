@@ -20,7 +20,12 @@ const Collectors = (() => {
 
     try {
       const res = await Api.get(CONFIG.WEBHOOK_COLLECTORS, { project_id: pid });
-      const data = await res.json();
+      const text = await res.text();
+      if (!text) {
+        container.innerHTML = '<p class="hint">No collectors found.</p>';
+        return;
+      }
+      const data = JSON.parse(text);
 
       const collectoren = Array.isArray(data)
         ? data
