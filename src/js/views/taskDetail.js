@@ -376,6 +376,43 @@ const TaskDetailView = (() => {
     el.appendChild(card);
   }
 
+  // ── Delete PDF from Odoo ──
+
+  async function deletePdf(filename, btnEl) {
+    if (!confirm(`"${filename}" verwijderen?`)) return;
+    if (!currentProjectId) return;
+
+    btnEl.disabled = true;
+    btnEl.textContent = "\u2026";
+
+    try {
+      const res = await Api.delete(CONFIG.WEBHOOK_PDF_UPLOAD, {
+        project_id: currentProjectId,
+        filename,
+      });
+      const result = await res.json();
+
+      if (res.ok && result.success !== false) {
+        const row = btnEl.closest(".pdf-row");
+        row?.remove();
+
+        // Show "No files." when list is empty
+        const el = document.getElementById("pdfs");
+        if (el && el.children.length === 0) {
+          el.className = "hint";
+          el.textContent = "No files.";
+        }
+      } else {
+        btnEl.disabled = false;
+        btnEl.textContent = "Delete";
+      }
+    } catch (err) {
+      console.error("[taskDetail] PDF delete error:", err);
+      btnEl.disabled = false;
+      btnEl.textContent = "Delete";
+    }
+  }
+
   // ── Render PDFs ──
 
   function renderPdfs(pdfs) {
@@ -436,6 +473,14 @@ const TaskDetailView = (() => {
       dlBtn.className = "btn-sm";
       dlBtn.addEventListener("click", () => downloadFile(p.data, name, mime));
       btns.appendChild(dlBtn);
+
+      if (Auth.hasRole("projectleider")) {
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "Delete";
+        delBtn.className = "danger btn-sm";
+        delBtn.addEventListener("click", () => deletePdf(name, delBtn));
+        btns.appendChild(delBtn);
+      }
 
       row.appendChild(btns);
       el.appendChild(row);
