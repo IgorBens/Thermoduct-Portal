@@ -266,12 +266,7 @@ const TaskList = (() => {
       || (Array.isArray(t.x_studio_afleveradres) ? t.x_studio_afleveradres[1] : "")
       || t.address || "";
 
-    let projectName = t.project_name || "";
-    if (!projectName && Array.isArray(t.project_id) && t.project_id[1]) {
-      const raw = t.project_id[1];
-      const sep = raw.indexOf(" - S");
-      projectName = sep > 0 ? raw.substring(0, sep) : raw;
-    }
+    const projectName = t.project_name || "";
 
     const card = document.createElement("div");
     card.className = "task-card";
@@ -381,13 +376,7 @@ const TaskList = (() => {
       TaskDetailView.setProjectId(pid);
 
       // Pass project name so collector photos use a readable directory name
-      let pName = task.project_name || "";
-      if (!pName && Array.isArray(task.project_id) && task.project_id[1]) {
-        const raw = task.project_id[1];
-        const sep = raw.indexOf(" - S");
-        pName = sep > 0 ? raw.substring(0, sep) : raw;
-      }
-      if (pName) Collectors.setProjectName(pName);
+      if (task.project_name) Collectors.setProjectName(task.project_name);
 
       Collectors.setProjectId(pid);
 
