@@ -455,7 +455,7 @@ const TaskList = (() => {
 
     // 2) Fetch fresh data in background
     try {
-      const res = await Api.get(`${CONFIG.WEBHOOK_TASKS}/tasks`, {
+      const res = await Api.get(`${CONFIG.WEBHOOK_TASKS}/tasks-quick`, {
         past_days: pastDays,
       });
       const text = await res.text();

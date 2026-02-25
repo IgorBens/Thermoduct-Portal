@@ -74,20 +74,28 @@ const Lookups = (() => {
     const addressIds    = new Set();
 
     tasks.forEach(t => {
-      // Worker / installer IDs
+      // Installer (x_studio_installateur) — used for "workers" display
+      const instId = m2oId(t.x_studio_installateur);
+      if (instId) installerIds.add(instId);
+
+      // Project leader (x_studio_projectleider) — also a res.partner
+      const leaderId = m2oId(t.x_studio_projectleider);
+      if (leaderId) installerIds.add(leaderId);
+
+      // Fallback: worker_ids array or employee_id
       if (Array.isArray(t.worker_ids)) {
         t.worker_ids.forEach(id => { if (id) installerIds.add(id); });
       }
       const empId = m2oId(t.employee_id);
-      if (empId && (!t.workers || t.workers.length === 0)) installerIds.add(empId);
+      if (empId) installerIds.add(empId);
 
       // Sale order ID
       const soId = m2oId(t.sale_order_id);
-      if (soId && !t.project_name) salesOrderIds.add(soId);
+      if (soId) salesOrderIds.add(soId);
 
       // Delivery address ID
       const addrId = m2oId(t.x_studio_afleveradres) || m2oId(t.partner_id);
-      if (addrId && !t.address_name && !t.address_full) addressIds.add(addrId);
+      if (addrId) addressIds.add(addrId);
     });
 
     return { installerIds, salesOrderIds, addressIds };
@@ -116,6 +124,13 @@ const Lookups = (() => {
         if (so?.project_name) t.project_name = so.project_name;
       }
 
+      // ── Project leader from x_studio_projectleider ──
+      if (!t.project_leader) {
+        const leaderId = m2oId(t.x_studio_projectleider);
+        const leader = leaderId ? installers[leaderId] : null;
+        if (leader?.name) t.project_leader = leader.name;
+      }
+
       // ── Address from partner/delivery address ──
       if (!t.address_name && !t.address_full) {
         const addrId = m2oId(t.x_studio_afleveradres) || m2oId(t.partner_id);
@@ -129,12 +144,19 @@ const Lookups = (() => {
         }
       }
 
-      // ── Workers from installer IDs ──
+      // ── Workers from x_studio_installateur ──
       if (!t.workers || t.workers.length === 0) {
-        const wIds = t.worker_ids || [];
-        if (wIds.length > 0) {
-          const names = wIds.map(id => installers[id]?.name).filter(Boolean);
-          if (names.length > 0) t.workers = names;
+        const instId = m2oId(t.x_studio_installateur);
+        const inst = instId ? installers[instId] : null;
+        if (inst?.name) t.workers = [inst.name];
+
+        // Fallback: worker_ids array
+        if (!t.workers || t.workers.length === 0) {
+          const wIds = t.worker_ids || [];
+          if (wIds.length > 0) {
+            const names = wIds.map(id => installers[id]?.name).filter(Boolean);
+            if (names.length > 0) t.workers = names;
+          }
         }
       }
     });
