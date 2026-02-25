@@ -328,13 +328,12 @@ const Collectors = (() => {
 
     try {
       const payload = {
-        action: "delete",
         project_id: projectId,
         collector_id: collectorId,
         filename,
       };
       if (projectName) payload.project_name = projectName;
-      const res = await Api.post(CONFIG.WEBHOOK_COLLECTOR_PHOTOS, payload);
+      const res = await Api.post(CONFIG.WEBHOOK_COLLECTOR_PHOTO_DELETE, payload);
       const result = await res.json();
       if (res.ok && result.success !== false) {
         showPhotoStatus(statusEl, "success", `${filename} verwijderd`);
