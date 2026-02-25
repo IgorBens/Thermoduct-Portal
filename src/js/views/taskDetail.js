@@ -251,6 +251,11 @@ const TaskDetailView = (() => {
           renderPdfs(payload?.pdfs || []);
         }
       }
+
+      // Re-fetch collectors + photos
+      if (typeof Collectors !== "undefined") {
+        Collectors.refresh();
+      }
     } catch (err) {
       console.error("[taskDetail] Task refresh error:", err);
     } finally {

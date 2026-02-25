@@ -502,5 +502,10 @@ const Collectors = (() => {
     setProjectName(name) {
       if (name) projectName = name;
     },
+
+    /** Re-fetch collectors + photos for the current project. */
+    refresh() {
+      if (projectId) fetchCollectors(projectId);
+    },
   };
 })();
