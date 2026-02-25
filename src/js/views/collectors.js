@@ -191,8 +191,17 @@ const Collectors = (() => {
       body.innerHTML = '<p class="hint" style="margin:0;padding:8px 0">Geen kringen.</p>';
     }
 
-    // Photo section — use display name as folder key (matches server directory)
-    const collectorPhotoId = collector.naam || collector.name || `Collector ${index + 1}`;
+    // Photo section — build unique folder key from blok + verdiep + name
+    const photoName = collector.naam || collector.name || `Collector ${index + 1}`;
+    const parts = [];
+    if (collector.blok !== undefined && collector.blok !== null && collector.blok !== "") {
+      parts.push(`Blok ${collector.blok}`);
+    }
+    if (collector.verdiep !== undefined && collector.verdiep !== null && collector.verdiep !== "") {
+      parts.push(`Verdiep ${collector.verdiep}`);
+    }
+    parts.push(photoName);
+    const collectorPhotoId = parts.join(" - ");
     body.appendChild(buildPhotoSection(collectorPhotoId));
 
     el.appendChild(body);
