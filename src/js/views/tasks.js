@@ -183,6 +183,13 @@ const TaskList = (() => {
     filterEl.value = prev;
   }
 
+  // Check if a task belongs to "Easykit VOLZET" (catch-all project, not a real delivery)
+  function isEasykitVolzet(task) {
+    const pid = task.project_id;
+    const pName = (Array.isArray(pid) ? pid[1] : "") || task.project_name || "";
+    return pName.toLowerCase().includes("easykit volzet");
+  }
+
   function filterAndRender() {
     const selected = document.getElementById("dateFilter").value;
     const leader   = document.getElementById("leaderFilter").value;
@@ -193,6 +200,11 @@ const TaskList = (() => {
     }
     if (leader) {
       filtered = filtered.filter(t => t.project_leader === leader);
+    }
+
+    // Easykit: hide "Easykit VOLZET" tasks (not real deliveries)
+    if (Auth.hasRole("easykit")) {
+      filtered = filtered.filter(t => !isEasykitVolzet(t));
     }
 
     render(filtered);
