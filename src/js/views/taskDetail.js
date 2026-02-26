@@ -286,6 +286,9 @@ const TaskDetailView = (() => {
     // Easykit: also refresh task photos
     if (isEasykit()) loadTaskPhotos();
 
+    // Refresh collectors (projectleider view)
+    if (!isEasykit()) Collectors.refresh();
+
     if (btn) { btn.disabled = false; btn.textContent = "Refresh"; }
   }
 
