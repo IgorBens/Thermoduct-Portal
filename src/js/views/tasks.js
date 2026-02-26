@@ -232,6 +232,11 @@ const TaskList = (() => {
       return;
     }
 
+    // Warehouse: hide Easykit tasks (Dries assigned)
+    if (Auth.hasRole("warehouse")) {
+      tasks = tasks.filter(t => !(t.workers || []).some(w => w.toLowerCase().startsWith("dries ")));
+    }
+
     tasks.sort((a, b) => getTaskDate(a).localeCompare(getTaskDate(b)));
 
     tasks.forEach(t => listEl.appendChild(buildTaskCard(t)));
