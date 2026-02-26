@@ -130,6 +130,7 @@ const TaskList = (() => {
 
   function populateDateFilter(tasks) {
     const filterEl = document.getElementById("dateFilter");
+    if (!filterEl) return;
 
     const dates = new Set();
     tasks.forEach(t => {
@@ -165,7 +166,7 @@ const TaskList = (() => {
 
   function populateLeaderFilter(tasks) {
     const filterEl = document.getElementById("leaderFilter");
-    if (filterEl.style.display === "none") return;
+    if (!filterEl || filterEl.style.display === "none") return;
 
     const leaders = new Set();
     tasks.forEach(t => {
