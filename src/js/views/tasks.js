@@ -559,41 +559,49 @@ const TaskList = (() => {
     }
 
     // project_id is already in the task list response
-    if (task.project_id) {
-      const pid = Array.isArray(task.project_id) ? task.project_id[0] : task.project_id;
+    const hasPid = !!task.project_id;
+    const pid = hasPid
+      ? (Array.isArray(task.project_id) ? task.project_id[0] : task.project_id)
+      : null;
 
-      TaskDetailView.setProjectId(pid);
+    if (pid) TaskDetailView.setProjectId(pid);
 
-      if (!easykit) {
-        // Pass project name so collector photos use a readable directory name
-        if (task.project_name) Collectors.setProjectName(task.project_name);
-        Collectors.setProjectId(pid);
-      }
+    if (!easykit && pid) {
+      // Pass project name so collector photos use a readable directory name
+      if (task.project_name) Collectors.setProjectName(task.project_name);
+      Collectors.setProjectId(pid);
+    }
 
-      // Fetch task info and documents in parallel (two separate n8n flows)
-      const params = { id: pid, task_id: task.id };
-      const infoPromise = Api.get(`${CONFIG.WEBHOOK_TASKS}/task-info`, params);
-      const docsPromise = Api.get(`${CONFIG.WEBHOOK_TASKS}/task-docs`, params);
+    // Fetch task info (description) — always fetch for all roles using task_id
+    const infoParams = { task_id: task.id };
+    if (pid) infoParams.id = pid;
+    const infoPromise = Api.get(`${CONFIG.WEBHOOK_TASKS}/task-info`, infoParams);
 
-      // Task info comes back fast — render description immediately
-      try {
-        const res = await infoPromise;
-        if (res.ok) {
-          const text = await res.text();
-          if (text) {
-            const data = JSON.parse(text);
-            const payload = Array.isArray(data) ? data[0] : (data?.data?.[0] || data);
-            if (payload?.description !== undefined) {
-              task.description = payload.description;
-              TaskDetailView.render(task);
-            }
+    // Fetch documents (PDFs) — needs project_id
+    const docsPromise = pid
+      ? Api.get(`${CONFIG.WEBHOOK_TASKS}/task-docs`, { id: pid, task_id: task.id })
+      : null;
+
+    // Task info comes back fast — render description immediately
+    try {
+      const res = await infoPromise;
+      if (res.ok) {
+        const text = await res.text();
+        if (text) {
+          const data = JSON.parse(text);
+          const payload = Array.isArray(data) ? data[0] : (data?.data?.[0] || data);
+          if (payload?.description !== undefined) {
+            task.description = payload.description;
+            TaskDetailView.render(task);
           }
         }
-      } catch (err) {
-        console.error("[tasks] Task info fetch error:", err);
       }
+    } catch (err) {
+      console.error("[tasks] Task info fetch error:", err);
+    }
 
-      // Documents come back slower — render PDFs when ready
+    // Documents come back slower — render PDFs when ready
+    if (docsPromise) {
       try {
         const res = await docsPromise;
         if (res.ok) {
@@ -607,6 +615,8 @@ const TaskList = (() => {
       } catch (err) {
         console.error("[tasks] Document fetch error:", err);
       }
+    } else {
+      TaskDetailView.renderPdfs([]);
     }
   }
 
