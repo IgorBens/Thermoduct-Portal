@@ -93,3 +93,88 @@ function fileToBase64(file) {
     reader.readAsDataURL(file);
   });
 }
+
+// ── Image compression ──
+
+/** Max dimension (px) for uploaded images — keeps quality high enough for field photos */
+const COMPRESS_MAX_DIM = 1920;
+/** JPEG quality (0–1) */
+const COMPRESS_QUALITY = 0.80;
+
+/**
+ * Compress an image file via canvas.
+ * Returns { base64, filename } where base64 is the raw base64 string (no prefix).
+ * PDFs and non-image files are returned as-is (no compression).
+ */
+function compressImage(file) {
+  // Skip non-images (PDFs, etc.)
+  if (!/^image\/(jpeg|png|heic|heif|webp)/i.test(file.type)) {
+    return fileToBase64(file).then(b64 => ({ base64: b64, filename: file.name }));
+  }
+
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+
+      let { width, height } = img;
+
+      // Scale down if larger than max dimension
+      if (width > COMPRESS_MAX_DIM || height > COMPRESS_MAX_DIM) {
+        const ratio = Math.min(COMPRESS_MAX_DIM / width, COMPRESS_MAX_DIM / height);
+        width  = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width  = width;
+      canvas.height = height;
+      canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+
+      // Always output as JPEG for smaller size
+      const dataUrl = canvas.toDataURL("image/jpeg", COMPRESS_QUALITY);
+      const base64  = dataUrl.split(",")[1];
+
+      // Rename extension to .jpg
+      const baseName = file.name.replace(/\.[^.]+$/, "");
+      resolve({ base64, filename: `${baseName}.jpg` });
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      // Fallback: return uncompressed
+      fileToBase64(file).then(b64 => resolve({ base64: b64, filename: file.name })).catch(reject);
+    };
+
+    img.src = url;
+  });
+}
+
+// ── Parallel upload helper ──
+
+/**
+ * Run async tasks in parallel with a concurrency limit.
+ * @param {Array} items - items to process
+ * @param {number} concurrency - max parallel workers
+ * @param {Function} fn - async function(item, index) to call for each item
+ */
+async function parallelMap(items, concurrency, fn) {
+  const results = new Array(items.length);
+  let next = 0;
+
+  async function worker() {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i], i);
+    }
+  }
+
+  const workers = [];
+  for (let w = 0; w < Math.min(concurrency, items.length); w++) {
+    workers.push(worker());
+  }
+  await Promise.all(workers);
+  return results;
+}

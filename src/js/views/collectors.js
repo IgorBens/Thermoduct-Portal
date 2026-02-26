@@ -410,31 +410,40 @@ const Collectors = (() => {
     btn.disabled = true;
     btn.textContent = "Uploading...";
 
+    const total = validFiles.length;
+    let done = 0;
     let anySuccess = false;
-    for (const file of validFiles) {
-      showPhotoStatus(statusEl, "uploading", `Uploading ${file.name}...`);
+
+    showPhotoStatus(statusEl, "uploading", `Uploading 0/${total} photos...`);
+
+    await parallelMap(validFiles, 3, async (file) => {
       try {
-        const base64 = await fileToBase64(file);
+        const { base64, filename } = await compressImage(file);
         const payload = {
           project_id: projectId,
           collector_id: collectorId,
-          filename: file.name,
+          filename,
           data: base64,
         };
         if (projectName) payload.project_name = projectName;
         const res = await Api.post(CONFIG.WEBHOOK_COLLECTOR_PHOTOS, payload);
         const result = await res.json();
+        done++;
         if (res.ok && result.success !== false) {
-          showPhotoStatus(statusEl, "success", `${file.name} uploaded!`);
           anySuccess = true;
+          showPhotoStatus(statusEl, "uploading", `Uploaded ${done}/${total} photos...`);
         } else {
-          showPhotoStatus(statusEl, "error", result.message || `${file.name} failed`);
+          showPhotoStatus(statusEl, "uploading", `Uploaded ${done}/${total} photos (${file.name} failed)`);
         }
       } catch (err) {
+        done++;
         console.error("[collectors] Photo upload error:", err);
-        showPhotoStatus(statusEl, "error", `${file.name} — network error`);
+        showPhotoStatus(statusEl, "uploading", `Uploaded ${done}/${total} photos (${file.name} failed)`);
       }
-    }
+    });
+
+    showPhotoStatus(statusEl, anySuccess ? "success" : "error",
+      anySuccess ? `${done} photos uploaded!` : "Upload failed");
 
     btn.disabled = false;
     btn.textContent = "Add photo";

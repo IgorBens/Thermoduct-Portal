@@ -160,20 +160,25 @@ const TaskDetailView = (() => {
 
     if (validFiles.length === 0) return;
 
-    // Upload files sequentially with a delay so Odoo has time to commit the folder
-    console.log(`[taskDetail] uploading ${validFiles.length} files SEQUENTIALLY`);
-    for (let i = 0; i < validFiles.length; i++) {
-      // Wait 3s between uploads so Odoo can register the newly created folder
-      if (i > 0) {
-        console.log(`[taskDetail] waiting 3s for Odoo to sync…`);
-        await new Promise(r => setTimeout(r, 3000));
-      }
-      const file = validFiles[i];
-      console.log(`[taskDetail] starting upload ${i + 1}/${validFiles.length}: ${file.name}`);
-      try {
-        await uploadPdf(file);
-        console.log(`[taskDetail] finished upload ${i + 1}/${validFiles.length}: ${file.name}`);
-      } catch { /* individual errors already handled in uploadPdf */ }
+    const total = validFiles.length;
+    let done = 0;
+    console.log(`[taskDetail] uploading ${total} files (3 parallel, compressed)`);
+
+    // First file goes alone so Odoo can create the folder, then rest in parallel
+    const first = validFiles[0];
+    const rest  = validFiles.slice(1);
+
+    console.log(`[taskDetail] uploading first file to ensure folder exists: ${first.name}`);
+    try { await uploadPdf(first); } catch { /* handled in uploadPdf */ }
+    done++;
+
+    if (rest.length > 0) {
+      await parallelMap(rest, 3, async (file) => {
+        try {
+          await uploadPdf(file);
+        } catch { /* handled in uploadPdf */ }
+        done++;
+      });
     }
   }
 
@@ -208,11 +213,11 @@ const TaskDetailView = (() => {
     const row = showUploadStatus(file.name, "uploading", "Uploading\u2026");
 
     try {
-      const base64 = await fileToBase64(file);
+      const { base64, filename } = await compressImage(file);
 
       const res = await Api.post(CONFIG.WEBHOOK_PDF_UPLOAD, {
         project_id: currentProjectId,
-        filename:   file.name,
+        filename,
         data:       base64,
       });
 
@@ -221,10 +226,11 @@ const TaskDetailView = (() => {
       if (row) row.remove();
 
       if (res.ok && result.success !== false) {
-        showUploadStatus(file.name, "success", "Uploaded!");
+        showUploadStatus(filename, "success", "Uploaded!");
 
         // Optimistically add the file to the UI immediately
-        appendPdfRow({ name: file.name, mimetype: file.type || "application/pdf", data: base64 });
+        const mime = /\.pdf$/i.test(filename) ? "application/pdf" : "image/jpeg";
+        appendPdfRow({ name: filename, mimetype: mime, data: base64 });
         return true;
       } else {
         showUploadStatus(file.name, "error", result.message || "Upload failed");
@@ -688,28 +694,37 @@ const TaskDetailView = (() => {
 
     if (btn) { btn.disabled = true; btn.textContent = "Uploading\u2026"; }
 
+    const total = validFiles.length;
+    let done = 0;
     let anySuccess = false;
-    for (const file of validFiles) {
-      showTaskPhotoStatus(statusEl, "uploading", `Uploading ${file.name}\u2026`);
+
+    showTaskPhotoStatus(statusEl, "uploading", `Uploading 0/${total} files\u2026`);
+
+    await parallelMap(validFiles, 3, async (file) => {
       try {
-        const base64 = await fileToBase64(file);
+        const { base64, filename } = await compressImage(file);
         const res = await Api.post(CONFIG.WEBHOOK_TASK_PHOTOS, {
           task_id:  currentTask.id,
-          filename: file.name,
+          filename,
           data:     base64,
         });
         const result = await res.json();
+        done++;
         if (res.ok && result.success !== false) {
-          showTaskPhotoStatus(statusEl, "success", `${file.name} uploaded!`);
           anySuccess = true;
+          showTaskPhotoStatus(statusEl, "uploading", `Uploaded ${done}/${total} files\u2026`);
         } else {
-          showTaskPhotoStatus(statusEl, "error", result.message || `${file.name} failed`);
+          showTaskPhotoStatus(statusEl, "uploading", `Uploaded ${done}/${total} files (${file.name} failed)`);
         }
       } catch (err) {
+        done++;
         console.error("[taskDetail] Task photo upload error:", err);
-        showTaskPhotoStatus(statusEl, "error", `${file.name} \u2014 network error`);
+        showTaskPhotoStatus(statusEl, "uploading", `Uploaded ${done}/${total} files (${file.name} failed)`);
       }
-    }
+    });
+
+    showTaskPhotoStatus(statusEl, anySuccess ? "success" : "error",
+      anySuccess ? `${done} files uploaded!` : "Upload failed");
 
     if (btn) { btn.disabled = false; btn.textContent = "Add file"; }
     if (anySuccess) setTimeout(() => loadTaskPhotos(), 800);
