@@ -321,17 +321,23 @@ const TaskDetailView = (() => {
     const card = document.createElement("div");
     card.className = "task-detail";
 
-    if (task.project_name) {
+    const taskName = task.name || task.display_name || "Task";
+    const easykit = isEasykit();
+
+    // Easykit: task name is the big header, project name is the subtitle
+    const headerText = easykit ? taskName : task.project_name;
+    const subText    = easykit ? (task.project_name || "") : (taskName + (task.order_number ? ` \u2022 ${task.order_number}` : ""));
+
+    if (headerText) {
       const proj = document.createElement("div");
       proj.className = "task-detail-project";
-      proj.textContent = task.project_name;
+      proj.textContent = headerText;
       card.appendChild(proj);
     }
 
     const nameRow = document.createElement("div");
     nameRow.className = "task-detail-name";
-    nameRow.textContent = task.name || task.display_name || "Task";
-    if (task.order_number) nameRow.textContent += ` \u2022 ${task.order_number}`;
+    nameRow.textContent = subText;
     card.appendChild(nameRow);
 
     const grid = document.createElement("div");

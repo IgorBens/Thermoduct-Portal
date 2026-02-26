@@ -285,16 +285,21 @@ const TaskList = (() => {
     const titleSection = document.createElement("div");
     titleSection.className = "task-card-title-section";
 
-    if (projectName) {
+    // Easykit: task name is the header, project name is the subtitle
+    const easykit = Auth.hasRole("easykit");
+    const headerText = easykit ? taskName : projectName;
+    const subText    = easykit ? projectName : (taskName + (t.order_number ? ` \u2022 ${t.order_number}` : ""));
+
+    if (headerText) {
       const proj = document.createElement("div");
       proj.className = "task-card-project";
-      proj.textContent = projectName;
+      proj.textContent = headerText;
       titleSection.appendChild(proj);
     }
 
     const nameEl = document.createElement("div");
     nameEl.className = "task-card-name";
-    nameEl.textContent = taskName + (t.order_number ? ` \u2022 ${t.order_number}` : "");
+    nameEl.textContent = easykit ? subText : subText;
     titleSection.appendChild(nameEl);
 
     header.appendChild(titleSection);
