@@ -387,6 +387,15 @@
   letter-spacing: 0.5px;
 }
 
+/* ── Detail map (task detail, easykit) ── */
+
+.detail-map {
+  height: 250px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  z-index: 0;
+}
+
 /* ── Route map (easykit role) ── */
 
 .route-map {

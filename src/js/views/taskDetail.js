@@ -22,6 +22,19 @@ const TaskDetailView = (() => {
       <div class="section-title">Scheduled on this site</div>
       <div id="teamList" class="hint">&mdash;</div>
     </div>`}
+    ${easykit ? `
+    <div class="card" id="detailMapCard" style="display:none">
+      <div class="section-title">Location</div>
+      <div id="detailMap" class="detail-map"></div>
+    </div>
+    <div class="card">
+      <div class="section-title-row">
+        <div class="section-title" style="margin-bottom:0">Photos</div>
+        <button id="taskPhotoUploadBtn" class="secondary btn-sm">Add file</button>
+      </div>
+      <div id="taskPhotoStatus"></div>
+      <div id="taskPhotoGallery" class="task-photo-gallery hint">&mdash;</div>
+    </div>` : `
     <div class="card">
       <div class="section-title-row">
         <div class="section-title" style="margin-bottom:0">Files</div>
@@ -31,15 +44,6 @@ const TaskDetailView = (() => {
       <div id="pdfUploadProgress"></div>
       <div id="pdfs" class="hint">&mdash;</div>
     </div>
-    ${easykit ? `
-    <div class="card">
-      <div class="section-title-row">
-        <div class="section-title" style="margin-bottom:0">Photos</div>
-        <button id="taskPhotoUploadBtn" class="secondary btn-sm">Add file</button>
-      </div>
-      <div id="taskPhotoStatus"></div>
-      <div id="taskPhotoGallery" class="task-photo-gallery hint">&mdash;</div>
-    </div>` : `
     <div class="card">
       <div class="section-title">Collectors</div>
       <div id="collectorContainer" class="hint">Loading collectors...</div>
@@ -395,6 +399,74 @@ const TaskDetailView = (() => {
     }
 
     el.appendChild(card);
+
+    // Render single-task map for easykit
+    if (isEasykit()) renderDetailMap(task);
+  }
+
+  // ── Detail map (easykit) ──
+
+  let detailMapInstance = null;
+
+  async function renderDetailMap(task) {
+    const mapCard = document.getElementById("detailMapCard");
+    const mapEl   = document.getElementById("detailMap");
+    if (!mapCard || !mapEl) return;
+
+    const geoQuery = task.address_street && task.address_zip
+      ? `${task.address_street}, ${task.address_zip}, Belgium`
+      : "";
+
+    if (!geoQuery) { mapCard.style.display = "none"; return; }
+
+    // Geocode using Nominatim (with localStorage cache)
+    const GEO_KEY = "geoCache";
+    let cache;
+    try { cache = JSON.parse(localStorage.getItem(GEO_KEY)) || {}; } catch { cache = {}; }
+
+    let coords = cache[geoQuery] || null;
+    if (!coords) {
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?` +
+          `format=json&countrycodes=be&limit=1&q=${encodeURIComponent(geoQuery)}`,
+          { headers: { "Accept-Language": "nl" } }
+        );
+        const data = await res.json();
+        if (data && data.length > 0) {
+          coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+          cache[geoQuery] = coords;
+          try { localStorage.setItem(GEO_KEY, JSON.stringify(cache)); } catch { /* ok */ }
+        }
+      } catch (err) {
+        console.warn("[taskDetail] Geocode error:", err);
+      }
+    }
+
+    if (!coords) { mapCard.style.display = "none"; return; }
+
+    mapCard.style.display = "";
+
+    // Init or reset map
+    if (detailMapInstance) {
+      detailMapInstance.remove();
+      detailMapInstance = null;
+    }
+
+    detailMapInstance = L.map(mapEl).setView([coords.lat, coords.lng], 15);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+      maxZoom: 18,
+    }).addTo(detailMapInstance);
+
+    const display = task.address_full || task.address_name || "";
+    L.marker([coords.lat, coords.lng])
+      .addTo(detailMapInstance)
+      .bindPopup(`<strong>${escapeHtml(task.name || "Task")}</strong><br>${escapeHtml(display)}`)
+      .openPopup();
+
+    // Fix tile rendering when map container was hidden
+    setTimeout(() => detailMapInstance.invalidateSize(), 200);
   }
 
   // ── Delete PDF from Odoo ──
