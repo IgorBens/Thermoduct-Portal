@@ -37,7 +37,10 @@ const TaskList = (() => {
     } catch { /* quota exceeded — ignore */ }
   }
 
-  const template = `
+  function buildListTemplate() {
+    const easykit = Auth.hasRole("easykit");
+    return `
+    ${easykit ? '<div class="card" id="routeMapCard" style="display:none"><div class="section-title">Delivery route</div><div id="routeMap" class="route-map"></div></div>' : ""}
     <div class="card">
       <div class="section-title-row">
         <div class="section-title" style="margin-bottom:0">Tasks</div>
@@ -45,7 +48,7 @@ const TaskList = (() => {
       </div>
       <div class="filter-row">
         <select id="dateFilter">
-          <option value="">All dates</option>
+          ${easykit ? "" : '<option value="">All dates</option>'}
         </select>
         <select id="leaderFilter" style="display:none">
           <option value="">All project leaders</option>
@@ -61,13 +64,18 @@ const TaskList = (() => {
       <div id="taskList"></div>
     </div>
   `;
+  }
 
   // ── Mount / Unmount ──
 
   function mount() {
-    // For projectleider/warehouse: default to next work day (tomorrow / Monday)
-    if (!savedDateFilter && (Auth.hasRole("projectleider") || Auth.hasRole("warehouse"))) {
-      roleDefaultDate = getNextWorkDay();
+    // Role-based date defaults (first load only)
+    if (!savedDateFilter) {
+      if (Auth.hasRole("easykit")) {
+        roleDefaultDate = getTodayString();
+      } else if (Auth.hasRole("projectleider") || Auth.hasRole("warehouse")) {
+        roleDefaultDate = getNextWorkDay();
+      }
     }
 
     // Restore filter state
@@ -113,6 +121,9 @@ const TaskList = (() => {
     savedDateFilter   = document.getElementById("dateFilter")?.value || "";
     savedLeaderFilter = document.getElementById("leaderFilter")?.value || "";
     savedPastDays     = document.getElementById("pastDaysFilter")?.value || "0";
+
+    // Clean up Leaflet map instance
+    if (routeMap) { routeMap.remove(); routeMap = null; }
   }
 
   // ── Date filter ──
@@ -127,7 +138,10 @@ const TaskList = (() => {
     });
 
     const prev = filterEl.value;
-    filterEl.innerHTML = '<option value="">All dates</option>';
+    const easykit = Auth.hasRole("easykit");
+
+    // Easykit: no "All dates" — always filter by a specific day
+    filterEl.innerHTML = easykit ? "" : '<option value="">All dates</option>';
     Array.from(dates).sort().forEach(d => {
       const opt = document.createElement("option");
       opt.value = d;
@@ -141,6 +155,11 @@ const TaskList = (() => {
       roleDefaultDate = null;
     } else {
       filterEl.value = prev;
+    }
+
+    // Easykit: if the selected value didn't stick (e.g. today has no tasks), pick the first available
+    if (easykit && !filterEl.value && filterEl.options.length > 0) {
+      filterEl.value = filterEl.options[0].value;
     }
   }
 
@@ -193,9 +212,10 @@ const TaskList = (() => {
 
     statusEl.textContent = `${tasks.length} task${tasks.length === 1 ? "" : "s"} found.`;
 
-    // Easykit role: keep the exact order from Odoo planning (no sort)
+    // Easykit role: keep the exact order from Odoo planning (no sort) + show route map
     if (Auth.hasRole("easykit")) {
       tasks.forEach(t => listEl.appendChild(buildTaskCard(t)));
+      renderRouteMap(tasks);
       return;
     }
 
@@ -262,6 +282,118 @@ const TaskList = (() => {
 
       easykitTasks.forEach(t => listEl.appendChild(buildTaskCard(t)));
     }
+  }
+
+  // ── Easykit route map ──
+
+  let routeMap = null; // Leaflet map instance
+
+  const GEO_CACHE_KEY = "geoCache";
+
+  function readGeoCache() {
+    try { return JSON.parse(localStorage.getItem(GEO_CACHE_KEY)) || {}; } catch { return {}; }
+  }
+  function writeGeoCache(cache) {
+    try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)); } catch { /* ok */ }
+  }
+
+  async function geocodeAddress(address, cache) {
+    if (cache[address]) return cache[address];
+
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?` +
+        `format=json&countrycodes=be&limit=1&q=${encodeURIComponent(address)}`,
+        { headers: { "Accept-Language": "nl" } }
+      );
+      const data = await res.json();
+      if (data && data.length > 0) {
+        const coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+        cache[address] = coords;
+        writeGeoCache(cache);
+        return coords;
+      }
+    } catch (err) {
+      console.warn("[tasks] Geocode error for:", address, err);
+    }
+    return null;
+  }
+
+  async function renderRouteMap(tasks) {
+    const mapCard = document.getElementById("routeMapCard");
+    const mapEl   = document.getElementById("routeMap");
+    if (!mapCard || !mapEl) return;
+
+    // Collect addresses with their task order
+    const stops = tasks
+      .map((t, i) => ({
+        index: i + 1,
+        name: t.name || t.display_name || "Task",
+        address: t.address_full || t.address_name || "",
+      }))
+      .filter(s => s.address);
+
+    if (stops.length === 0) {
+      mapCard.style.display = "none";
+      return;
+    }
+
+    mapCard.style.display = "";
+
+    // Init or reset map
+    if (routeMap) {
+      routeMap.remove();
+      routeMap = null;
+    }
+    routeMap = L.map(mapEl).setView([50.85, 4.35], 8); // Belgium center
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+      maxZoom: 18,
+    }).addTo(routeMap);
+
+    // Geocode all addresses (with 1s delay between to respect Nominatim policy)
+    const geoCache = readGeoCache();
+    const coords = [];
+
+    for (let i = 0; i < stops.length; i++) {
+      const stop = stops[i];
+      // Small delay between uncached requests to respect Nominatim rate limit
+      if (i > 0 && !geoCache[stop.address]) {
+        await new Promise(r => setTimeout(r, 1100));
+      }
+      const c = await geocodeAddress(stop.address, geoCache);
+      if (c) {
+        coords.push({ ...stop, ...c });
+      }
+    }
+
+    if (coords.length === 0) {
+      mapCard.style.display = "none";
+      return;
+    }
+
+    // Add numbered markers
+    coords.forEach(stop => {
+      const icon = L.divIcon({
+        className: "route-marker",
+        html: `<span>${stop.index}</span>`,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+      });
+      L.marker([stop.lat, stop.lng], { icon })
+        .bindPopup(`<strong>${stop.index}. ${escapeHtml(stop.name)}</strong><br>${escapeHtml(stop.address)}`)
+        .addTo(routeMap);
+    });
+
+    // Draw route line
+    if (coords.length > 1) {
+      const latlngs = coords.map(c => [c.lat, c.lng]);
+      L.polyline(latlngs, { color: "#0097A7", weight: 3, opacity: 0.7, dashArray: "8 4" }).addTo(routeMap);
+    }
+
+    // Fit map to show all markers
+    const bounds = L.latLngBounds(coords.map(c => [c.lat, c.lng]));
+    routeMap.fitBounds(bounds, { padding: [30, 30] });
   }
 
   // ── Build a single task card element ──
@@ -535,7 +667,7 @@ const TaskList = (() => {
   // ── Register view ──
 
   Router.register("tasks", {
-    template,
+    get template() { return buildListTemplate(); },
     mount,
     unmount,
     tab: { label: "Tasks", roles: ["*"] },
