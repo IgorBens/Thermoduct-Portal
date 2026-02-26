@@ -298,7 +298,8 @@ const TaskList = (() => {
 
   // ── Easykit route map ──
 
-  let routeMap = null; // Leaflet map instance
+  let routeMap = null;       // Leaflet map instance
+  let mapGeneration = 0;     // Cancel stale async renders
 
   const GEO_CACHE_KEY = "geoCache";
 
@@ -332,9 +333,16 @@ const TaskList = (() => {
   }
 
   async function renderRouteMap(tasks) {
+    const gen = ++mapGeneration; // Mark this render generation
+
     const mapCard = document.getElementById("routeMapCard");
     const mapEl   = document.getElementById("routeMap");
     if (!mapCard || !mapEl) return;
+
+    // Only render when address lookups have resolved (address_street is set by Lookups)
+    // If not resolved yet, skip — we'll be called again after enrichment
+    const hasEnrichedAddresses = tasks.some(t => t.address_street);
+    if (!hasEnrichedAddresses) return;
 
     // Collect addresses with their task order
     // Use street + zip for geocoding (reliable), full address for display
@@ -344,7 +352,7 @@ const TaskList = (() => {
         // Build a clean geocoding query: "Street, Zip, Belgium"
         const geoQuery = t.address_street && t.address_zip
           ? `${t.address_street}, ${t.address_zip}, Belgium`
-          : display;
+          : "";
         return {
           index: i + 1,
           name: t.name || t.display_name || "Task",
@@ -377,16 +385,22 @@ const TaskList = (() => {
     const coords = [];
 
     for (let i = 0; i < stops.length; i++) {
+      if (gen !== mapGeneration) return; // Stale — a newer render started
+
       const stop = stops[i];
       // Small delay between uncached requests to respect Nominatim rate limit
       if (i > 0 && !geoCache[stop.geoQuery]) {
         await new Promise(r => setTimeout(r, 1100));
       }
+      if (gen !== mapGeneration) return; // Check again after wait
+
       const c = await geocodeAddress(stop.geoQuery, geoCache);
       if (c) {
         coords.push({ ...stop, ...c });
       }
     }
+
+    if (gen !== mapGeneration) return; // Final stale check
 
     if (coords.length === 0) {
       mapCard.style.display = "none";
