@@ -112,7 +112,7 @@ const Lookups = (() => {
 
   function enrichTasks(tasks) {
     tasks.forEach(t => {
-      if (!t.project_name && t.sale_order_id) {
+      if (t.sale_order_id) {
         const so = salesOrders[t.sale_order_id];
         if (so?.project_name) t.project_name = so.project_name;
       }
