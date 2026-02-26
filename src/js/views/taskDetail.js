@@ -35,7 +35,7 @@ const TaskDetailView = (() => {
     <div class="card">
       <div class="section-title-row">
         <div class="section-title" style="margin-bottom:0">Photos</div>
-        <button id="taskPhotoUploadBtn" class="secondary btn-sm">Add photo</button>
+        <button id="taskPhotoUploadBtn" class="secondary btn-sm">Add file</button>
       </div>
       <div id="taskPhotoStatus"></div>
       <div id="taskPhotoGallery" class="task-photo-gallery hint">&mdash;</div>
@@ -595,7 +595,7 @@ const TaskDetailView = (() => {
   function triggerTaskPhotoUpload() {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = "image/*";
+    input.accept = "image/*,.pdf";
     input.multiple = true;
     input.addEventListener("change", () => {
       if (input.files.length > 0) handleTaskPhotoUpload(Array.from(input.files));
@@ -608,9 +608,9 @@ const TaskDetailView = (() => {
     const gallery  = document.getElementById("taskPhotoGallery");
     const btn      = document.getElementById("taskPhotoUploadBtn");
 
-    const validFiles = files.filter(f => /^image\//i.test(f.type));
+    const validFiles = files.filter(f => /^image\//i.test(f.type) || f.type === "application/pdf");
     if (validFiles.length === 0) {
-      showTaskPhotoStatus(statusEl, "error", "Only images are allowed.");
+      showTaskPhotoStatus(statusEl, "error", "Only images and PDFs are allowed.");
       return;
     }
 
@@ -639,7 +639,7 @@ const TaskDetailView = (() => {
       }
     }
 
-    if (btn) { btn.disabled = false; btn.textContent = "Add photo"; }
+    if (btn) { btn.disabled = false; btn.textContent = "Add file"; }
     if (anySuccess) setTimeout(() => loadTaskPhotos(), 800);
     setTimeout(() => { if (statusEl) statusEl.innerHTML = ""; }, 4000);
   }
@@ -649,7 +649,7 @@ const TaskDetailView = (() => {
     if (!gallery || !currentTask) return;
 
     gallery.className = "task-photo-gallery hint";
-    gallery.textContent = "Loading photos\u2026";
+    gallery.textContent = "Loading files\u2026";
 
     try {
       const res = await Api.get(CONFIG.WEBHOOK_TASK_PHOTOS, { task_id: currentTask.id });
@@ -664,7 +664,7 @@ const TaskDetailView = (() => {
       renderTaskPhotoGallery(photos, gallery);
     } catch {
       gallery.className = "task-photo-gallery hint";
-      gallery.textContent = "No photos yet.";
+      gallery.textContent = "No files yet.";
     }
   }
 
@@ -672,31 +672,46 @@ const TaskDetailView = (() => {
     gallery.innerHTML = "";
     if (!photos || photos.length === 0) {
       gallery.className = "task-photo-gallery hint";
-      gallery.textContent = "No photos yet.";
+      gallery.textContent = "No files yet.";
       return;
     }
 
     gallery.className = "task-photo-gallery";
     photos.forEach(photo => {
+      const mime = photo.mimetype || "image/jpeg";
+      const isPdf = /pdf/i.test(mime);
+
       const thumb = document.createElement("div");
       thumb.className = "task-photo-thumb";
 
-      const img = document.createElement("img");
-      const mime = photo.mimetype || "image/jpeg";
-      if (photo.data) {
-        img.src = `data:${mime};base64,${photo.data}`;
-      } else if (photo.url) {
-        img.src = photo.url;
-      }
-      img.alt = photo.name || "Photo";
-      img.addEventListener("click", () => {
-        const src = photo.data ? `data:${mime};base64,${photo.data}` : photo.url;
-        if (src) showTaskPhotoOverlay(src, photo.name || "Photo");
-      });
-
       const imgWrap = document.createElement("div");
       imgWrap.className = "task-photo-img-wrap";
-      imgWrap.appendChild(img);
+
+      if (isPdf) {
+        // PDF: show file icon placeholder
+        const pdfIcon = document.createElement("div");
+        pdfIcon.className = "task-photo-pdf-icon";
+        pdfIcon.innerHTML = "&#128196;<span>PDF</span>";
+        pdfIcon.addEventListener("click", () => {
+          if (photo.data) viewFile(photo.data, mime);
+        });
+        imgWrap.appendChild(pdfIcon);
+      } else {
+        // Image: show thumbnail
+        const img = document.createElement("img");
+        if (photo.data) {
+          img.src = `data:${mime};base64,${photo.data}`;
+        } else if (photo.url) {
+          img.src = photo.url;
+        }
+        img.alt = photo.name || "Photo";
+        img.addEventListener("click", () => {
+          const src = photo.data ? `data:${mime};base64,${photo.data}` : photo.url;
+          if (src) showTaskPhotoOverlay(src, photo.name || "Photo");
+        });
+        imgWrap.appendChild(img);
+      }
+
       thumb.appendChild(imgWrap);
 
       const footer = document.createElement("div");
