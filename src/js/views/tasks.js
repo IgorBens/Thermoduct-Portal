@@ -234,67 +234,7 @@ const TaskList = (() => {
 
     tasks.sort((a, b) => getTaskDate(a).localeCompare(getTaskDate(b)));
 
-    // Warehouse role: group by worker, Hendrika tasks → "Easykit" at bottom
-    if (Auth.hasRole("warehouse")) {
-      renderWarehouseGrouped(tasks, listEl);
-      return;
-    }
-
     tasks.forEach(t => listEl.appendChild(buildTaskCard(t)));
-  }
-
-  // ── Warehouse grouped render ──
-
-  function renderWarehouseGrouped(tasks, listEl) {
-    const easykitTasks = [];
-    const workerTasks  = []; // non-easykit
-
-    tasks.forEach(t => {
-      const leader  = (t.project_leader || "").toLowerCase();
-      const workers = (t.workers || []).map(w => w.toLowerCase());
-      if (leader.includes("hendrika") || workers.some(w => w.startsWith("dries "))) {
-        easykitTasks.push(t);
-      } else {
-        workerTasks.push(t);
-      }
-    });
-
-    // Group non-easykit tasks by worker name
-    const groups = new Map(); // worker name → [task, …]
-    workerTasks.forEach(t => {
-      const workers = t.workers || [];
-      if (workers.length === 0) {
-        // No workers assigned — put under "Unassigned"
-        if (!groups.has("Unassigned")) groups.set("Unassigned", []);
-        groups.get("Unassigned").push(t);
-      } else {
-        workers.forEach(w => {
-          if (!groups.has(w)) groups.set(w, []);
-          groups.get(w).push(t);
-        });
-      }
-    });
-
-    // Render worker groups (sorted alphabetically)
-    const sortedWorkers = Array.from(groups.keys()).sort();
-    sortedWorkers.forEach(worker => {
-      const header = document.createElement("div");
-      header.className = "task-group-header";
-      header.textContent = worker;
-      listEl.appendChild(header);
-
-      groups.get(worker).forEach(t => listEl.appendChild(buildTaskCard(t)));
-    });
-
-    // Render Easykit section at the bottom
-    if (easykitTasks.length > 0) {
-      const header = document.createElement("div");
-      header.className = "task-group-header task-group-header--easykit";
-      header.textContent = "Easykit";
-      listEl.appendChild(header);
-
-      easykitTasks.forEach(t => listEl.appendChild(buildTaskCard(t)));
-    }
   }
 
   // ── Easykit route map ──

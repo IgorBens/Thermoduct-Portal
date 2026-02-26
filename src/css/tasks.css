@@ -86,26 +86,6 @@
   padding: 8px 16px 12px;
 }
 
-/* ── Task group headers (warehouse view) ── */
-
-.task-group-header {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text);
-  margin: 20px 0 4px;
-  padding: 8px 0 4px;
-  border-bottom: 2px solid var(--primary);
-}
-
-.task-group-header:first-child {
-  margin-top: 8px;
-}
-
-.task-group-header--easykit {
-  border-bottom-color: var(--muted);
-  color: var(--muted);
-}
-
 /* ── Task detail top row (back + refresh) ── */
 
 .detail-top-row {
