@@ -123,6 +123,9 @@ const Lookups = (() => {
           const cityLine = [addr.zip, addr.city].filter(Boolean).join(" ");
           t.address_full = [addr.street, cityLine].filter(Boolean).join(", ");
           if (!t.address_name && addr.street) t.address_name = addr.street;
+          // Store structured parts for reliable geocoding (street + zip)
+          if (addr.street) t.address_street = addr.street;
+          if (addr.zip)    t.address_zip    = addr.zip;
         }
       }
 

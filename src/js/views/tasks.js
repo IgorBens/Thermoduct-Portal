@@ -337,13 +337,22 @@ const TaskList = (() => {
     if (!mapCard || !mapEl) return;
 
     // Collect addresses with their task order
+    // Use street + zip for geocoding (reliable), full address for display
     const stops = tasks
-      .map((t, i) => ({
-        index: i + 1,
-        name: t.name || t.display_name || "Task",
-        address: t.address_full || t.address_name || "",
-      }))
-      .filter(s => s.address);
+      .map((t, i) => {
+        const display = t.address_full || t.address_name || "";
+        // Build a clean geocoding query: "Street, Zip, Belgium"
+        const geoQuery = t.address_street && t.address_zip
+          ? `${t.address_street}, ${t.address_zip}, Belgium`
+          : display;
+        return {
+          index: i + 1,
+          name: t.name || t.display_name || "Task",
+          address: display,
+          geoQuery,
+        };
+      })
+      .filter(s => s.geoQuery);
 
     if (stops.length === 0) {
       mapCard.style.display = "none";
@@ -370,10 +379,10 @@ const TaskList = (() => {
     for (let i = 0; i < stops.length; i++) {
       const stop = stops[i];
       // Small delay between uncached requests to respect Nominatim rate limit
-      if (i > 0 && !geoCache[stop.address]) {
+      if (i > 0 && !geoCache[stop.geoQuery]) {
         await new Promise(r => setTimeout(r, 1100));
       }
-      const c = await geocodeAddress(stop.address, geoCache);
+      const c = await geocodeAddress(stop.geoQuery, geoCache);
       if (c) {
         coords.push({ ...stop, ...c });
       }
