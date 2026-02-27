@@ -36,6 +36,9 @@ const CONFIG = Object.freeze({
   // Collector photos (upload to server, not Odoo)
   WEBHOOK_COLLECTOR_PHOTOS:       "${WEBHOOK_COLLECTOR_PHOTOS}",
 
+  // Collector status updates (pressure test + photo status → Odoo fields)
+  WEBHOOK_COLLECTOR_STATUS:       "${WEBHOOK_COLLECTOR_STATUS}",
+
   // Task photos — easykit chauffeurs upload delivery/problem photos (saved as Odoo task attachment)
   WEBHOOK_TASK_PHOTOS:            "${WEBHOOK_TASK_PHOTOS}",
 
