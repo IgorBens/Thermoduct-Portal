@@ -219,127 +219,74 @@ const Collectors = (() => {
     parts.push(photoName);
     const collectorPhotoId = parts.join(" - ");
 
-    // Status section (Collector op Druk + Foto's Uitvoering) — between kringen and photos
-    body.appendChild(buildStatusSection(collector, collectorPhotoId));
+    // Status section (Foto's Uitvoering — projectleider only)
+    const statusSection = buildStatusSection(collector, collectorPhotoId);
+    if (statusSection) body.appendChild(statusSection);
 
-    body.appendChild(buildPhotoSection(collectorPhotoId));
+    body.appendChild(buildPhotoSection(collector, collectorPhotoId));
 
     el.appendChild(body);
     return el;
   }
 
-  // ── Status section per collector (Collector op Druk + Foto's Uitvoering) ──
+  // ── Status section per collector (Foto's Uitvoering — projectleider only) ──
 
   function buildStatusSection(collector, collectorId) {
+    // ── Selection: Foto's Uitvoering (projectleider only) ──
+    if (!Auth.hasRole("projectleider")) return null;
+
     const section = document.createElement("div");
     section.className = "coll-status";
 
-    // ── Checkbox: Collector op Druk ──
-    const drukRow = document.createElement("div");
-    drukRow.className = "coll-status-row";
+    const fotosRow = document.createElement("div");
+    fotosRow.className = "coll-status-row";
 
-    const drukLabel = document.createElement("label");
-    drukLabel.className = "coll-status-check";
+    const fotosLabel = document.createElement("span");
+    fotosLabel.className = "coll-status-label";
+    fotosLabel.textContent = "Foto\u2019s Uitvoering";
+    fotosRow.appendChild(fotosLabel);
 
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.checked = !!collector.collector_op_druk;
+    const fotosSelect = document.createElement("select");
+    fotosSelect.className = "coll-status-select";
 
-    const labelText = document.createElement("span");
-    labelText.className = "coll-status-check-text";
-    labelText.textContent = "Collector op Druk";
+    [
+      { value: "",                  label: "Geen Foto\u2019s" },
+      { value: "fotos_geupload",    label: "Foto\u2019s Ge\u00fcpload" },
+      { value: "fotos_goedgekeurd", label: "Foto\u2019s Goedgekeurd" },
+    ].forEach(opt => {
+      const el = document.createElement("option");
+      el.value = opt.value;
+      el.textContent = opt.label;
+      fotosSelect.appendChild(el);
+    });
 
-    drukLabel.appendChild(checkbox);
-    drukLabel.appendChild(labelText);
-    drukRow.appendChild(drukLabel);
-
-    // Show installateur name next to the checkbox
-    const installateurSpan = document.createElement("span");
-    installateurSpan.className = "coll-status-installateur";
-    if (collector.collector_op_druk && collector.collector_installateur) {
-      installateurSpan.textContent = collector.collector_installateur;
+    if (collector.fotos_uitvoering) {
+      fotosSelect.value = collector.fotos_uitvoering;
     }
-    drukRow.appendChild(installateurSpan);
 
-    checkbox.addEventListener("change", async () => {
-      const user = Auth.getUser();
-      const userName = user?.name || user?.preferred_username || "";
-
-      if (checkbox.checked) {
-        installateurSpan.textContent = userName;
-      } else {
-        installateurSpan.textContent = "";
-      }
-
+    fotosSelect.addEventListener("change", async () => {
       try {
         await Api.post(CONFIG.WEBHOOK_COLLECTOR_STATUS, {
           project_id: projectId,
           task_id: taskId,
           collector_id: collectorId,
           odoo_id: collector.id || null,
-          collector_op_druk: checkbox.checked,
-          user_name: userName,
-          user_email: user?.email || "",
+          fotos_uitvoering: fotosSelect.value,
         });
       } catch (err) {
-        console.error("[collectors] Pressure status update error:", err);
+        console.error("[collectors] Photo status update error:", err);
       }
     });
 
-    section.appendChild(drukRow);
-
-    // ── Selection: Foto's Uitvoering (projectleider only) ──
-    if (Auth.hasRole("projectleider")) {
-      const fotosRow = document.createElement("div");
-      fotosRow.className = "coll-status-row";
-
-      const fotosLabel = document.createElement("span");
-      fotosLabel.className = "coll-status-label";
-      fotosLabel.textContent = "Foto\u2019s Uitvoering";
-      fotosRow.appendChild(fotosLabel);
-
-      const fotosSelect = document.createElement("select");
-      fotosSelect.className = "coll-status-select";
-
-      [
-        { value: "",                  label: "Geen Foto\u2019s" },
-        { value: "fotos_geupload",    label: "Foto\u2019s Ge\u00fcpload" },
-        { value: "fotos_goedgekeurd", label: "Foto\u2019s Goedgekeurd" },
-      ].forEach(opt => {
-        const el = document.createElement("option");
-        el.value = opt.value;
-        el.textContent = opt.label;
-        fotosSelect.appendChild(el);
-      });
-
-      if (collector.fotos_uitvoering) {
-        fotosSelect.value = collector.fotos_uitvoering;
-      }
-
-      fotosSelect.addEventListener("change", async () => {
-        try {
-          await Api.post(CONFIG.WEBHOOK_COLLECTOR_STATUS, {
-            project_id: projectId,
-            task_id: taskId,
-            collector_id: collectorId,
-            odoo_id: collector.id || null,
-            fotos_uitvoering: fotosSelect.value,
-          });
-        } catch (err) {
-          console.error("[collectors] Photo status update error:", err);
-        }
-      });
-
-      fotosRow.appendChild(fotosSelect);
-      section.appendChild(fotosRow);
-    }
+    fotosRow.appendChild(fotosSelect);
+    section.appendChild(fotosRow);
 
     return section;
   }
 
   // ── Photo section per collector ──
 
-  function buildPhotoSection(collectorId) {
+  function buildPhotoSection(collector, collectorId) {
     const section = document.createElement("div");
     section.className = "coll-photos";
 
@@ -355,6 +302,76 @@ const Collectors = (() => {
     header.appendChild(uploadBtn);
 
     section.appendChild(header);
+
+    // ── Pressure info row (checkbox + installer + date) above the gallery ──
+    const drukInfo = document.createElement("div");
+    drukInfo.className = "coll-photos-druk-row";
+
+    const drukLabel = document.createElement("label");
+    drukLabel.className = "coll-status-check";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = !!collector.collector_op_druk;
+
+    const labelText = document.createElement("span");
+    labelText.className = "coll-status-check-text";
+    labelText.textContent = "Collector op Druk";
+
+    drukLabel.appendChild(checkbox);
+    drukLabel.appendChild(labelText);
+    drukInfo.appendChild(drukLabel);
+
+    // Installer name
+    const installateurSpan = document.createElement("span");
+    installateurSpan.className = "coll-status-installateur";
+    if (collector.collector_op_druk && collector.collector_installateur) {
+      installateurSpan.textContent = collector.collector_installateur;
+    }
+    drukInfo.appendChild(installateurSpan);
+
+    // Date of the pressure check
+    const dateSpan = document.createElement("span");
+    dateSpan.className = "coll-status-date";
+    if (collector.collector_op_druk && collector.collector_op_druk_datum) {
+      const raw = String(collector.collector_op_druk_datum).split(" ")[0];
+      dateSpan.textContent = raw;
+    }
+    drukInfo.appendChild(dateSpan);
+
+    checkbox.addEventListener("change", async () => {
+      const user = Auth.getUser();
+      const userName = user?.name || user?.preferred_username || "";
+      const now = new Date();
+      const todayStr = now.getFullYear() + "-"
+        + String(now.getMonth() + 1).padStart(2, "0") + "-"
+        + String(now.getDate()).padStart(2, "0");
+
+      if (checkbox.checked) {
+        installateurSpan.textContent = userName;
+        dateSpan.textContent = todayStr;
+      } else {
+        installateurSpan.textContent = "";
+        dateSpan.textContent = "";
+      }
+
+      try {
+        await Api.post(CONFIG.WEBHOOK_COLLECTOR_STATUS, {
+          project_id: projectId,
+          task_id: taskId,
+          collector_id: collectorId,
+          odoo_id: collector.id || null,
+          collector_op_druk: checkbox.checked,
+          user_name: userName,
+          user_email: user?.email || "",
+          collector_op_druk_datum: checkbox.checked ? todayStr : false,
+        });
+      } catch (err) {
+        console.error("[collectors] Pressure status update error:", err);
+      }
+    });
+
+    section.appendChild(drukInfo);
 
     // Status area for upload feedback
     const status = document.createElement("div");

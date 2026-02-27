@@ -342,6 +342,28 @@
   margin-bottom: 8px;
 }
 
+/* Pressure info row above the photo gallery */
+.coll-photos-druk-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  background: var(--primary-light);
+  border-radius: var(--radius);
+  flex-wrap: wrap;
+}
+
+.coll-status-date {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.coll-status-date:empty {
+  display: none;
+}
+
 .coll-photos-title {
   font-size: 12px;
   font-weight: 700;
