@@ -127,7 +127,19 @@ const PhotosView = (() => {
       });
 
       allProjects = Object.values(projectMap);
-      allProjects.sort((a, b) => a.name.localeCompare(b.name));
+
+      // Determine the most recent task date per project
+      allProjects.forEach(p => {
+        let latest = "";
+        p.tasks.forEach(t => {
+          const d = getTaskDate(t);
+          if (d && d > latest) latest = d;
+        });
+        p.latestDate = latest;
+      });
+
+      // Sort newest to oldest
+      allProjects.sort((a, b) => (b.latestDate || "").localeCompare(a.latestDate || ""));
 
       renderProjects(allProjects);
     } catch (err) {
@@ -173,6 +185,13 @@ const PhotosView = (() => {
         leader.className = "photos-project-leader";
         leader.textContent = project.leader;
         info.appendChild(leader);
+      }
+
+      if (project.latestDate) {
+        const date = document.createElement("div");
+        date.className = "photos-project-date";
+        date.textContent = formatDateLabel(project.latestDate);
+        info.appendChild(date);
       }
 
       header.appendChild(info);
