@@ -9,6 +9,7 @@
 const Collectors = (() => {
   let projectId = null;
   let projectName = null;
+  let taskId = null;
 
   // ── Fetch collector data ──
 
@@ -273,6 +274,7 @@ const Collectors = (() => {
       try {
         await Api.post(CONFIG.WEBHOOK_COLLECTOR_STATUS, {
           project_id: projectId,
+          task_id: taskId,
           collector_id: collectorId,
           odoo_id: collector.id || null,
           collector_op_druk: checkbox.checked,
@@ -317,6 +319,7 @@ const Collectors = (() => {
       try {
         await Api.post(CONFIG.WEBHOOK_COLLECTOR_STATUS, {
           project_id: projectId,
+          task_id: taskId,
           collector_id: collectorId,
           odoo_id: collector.id || null,
           fotos_uitvoering: fotosSelect.value,
@@ -622,8 +625,13 @@ const Collectors = (() => {
     init() {
       projectId = null;
       projectName = null;
+      taskId = null;
       const container = document.getElementById("collectorContainer");
       if (container) container.innerHTML = '<p class="hint">Loading collectors...</p>';
+    },
+
+    setTaskId(id) {
+      if (id) taskId = id;
     },
 
     setProjectId(pid) {

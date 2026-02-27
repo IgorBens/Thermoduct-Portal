@@ -513,6 +513,8 @@ const TaskList = (() => {
     if (pid) TaskDetailView.setProjectId(pid);
 
     if (!easykit && pid) {
+      // Pass task ID so collector status updates reference the right Odoo task
+      Collectors.setTaskId(task.id);
       // Pass project name so collector photos use a readable directory name
       if (task.project_name) Collectors.setProjectName(task.project_name);
       Collectors.setProjectId(pid);
