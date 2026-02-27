@@ -37,7 +37,10 @@ const TaskList = (() => {
     } catch { /* quota exceeded — ignore */ }
   }
 
-  const template = `
+  function buildListTemplate() {
+    const easykit = Auth.hasRole("easykit");
+    return `
+    ${easykit ? '<div class="card" id="routeMapCard" style="display:none"><div class="section-title">Delivery route</div><div id="routeMap" class="route-map"></div></div>' : ""}
     <div class="card">
       <div class="section-title-row">
         <div class="section-title" style="margin-bottom:0">Tasks</div>
@@ -45,7 +48,7 @@ const TaskList = (() => {
       </div>
       <div class="filter-row">
         <select id="dateFilter">
-          <option value="">All dates</option>
+          ${easykit ? "" : '<option value="">All dates</option>'}
         </select>
         <select id="leaderFilter" style="display:none">
           <option value="">All project leaders</option>
@@ -61,13 +64,18 @@ const TaskList = (() => {
       <div id="taskList"></div>
     </div>
   `;
+  }
 
   // ── Mount / Unmount ──
 
   function mount() {
-    // For projectleider/warehouse: default to next work day (tomorrow / Monday)
-    if (!savedDateFilter && (Auth.hasRole("projectleider") || Auth.hasRole("warehouse"))) {
-      roleDefaultDate = getNextWorkDay();
+    // Role-based date defaults (first load only)
+    if (!savedDateFilter) {
+      if (Auth.hasRole("easykit")) {
+        roleDefaultDate = getTodayString();
+      } else if (Auth.hasRole("projectleider") || Auth.hasRole("warehouse")) {
+        roleDefaultDate = getNextWorkDay();
+      }
     }
 
     // Restore filter state
@@ -81,10 +89,11 @@ const TaskList = (() => {
       leaderEl.value = savedLeaderFilter;
     }
 
-    // Refresh button — clears cache so it's a true fresh load
+    // Refresh button — full reset: clears task + lookup caches, re-fetches everything
     document.getElementById("tasksRefreshBtn").addEventListener("click", () => {
       allTasks = [];
       try { localStorage.removeItem(CACHE_KEY); } catch { /* ok */ }
+      Lookups.clear();
       fetchTasks();
     });
 
@@ -112,12 +121,16 @@ const TaskList = (() => {
     savedDateFilter   = document.getElementById("dateFilter")?.value || "";
     savedLeaderFilter = document.getElementById("leaderFilter")?.value || "";
     savedPastDays     = document.getElementById("pastDaysFilter")?.value || "0";
+
+    // Clean up Leaflet map instance
+    if (routeMap) { routeMap.remove(); routeMap = null; }
   }
 
   // ── Date filter ──
 
   function populateDateFilter(tasks) {
     const filterEl = document.getElementById("dateFilter");
+    if (!filterEl) return;
 
     const dates = new Set();
     tasks.forEach(t => {
@@ -126,7 +139,10 @@ const TaskList = (() => {
     });
 
     const prev = filterEl.value;
-    filterEl.innerHTML = '<option value="">All dates</option>';
+    const easykit = Auth.hasRole("easykit");
+
+    // Easykit: no "All dates" — always filter by a specific day
+    filterEl.innerHTML = easykit ? "" : '<option value="">All dates</option>';
     Array.from(dates).sort().forEach(d => {
       const opt = document.createElement("option");
       opt.value = d;
@@ -141,11 +157,16 @@ const TaskList = (() => {
     } else {
       filterEl.value = prev;
     }
+
+    // Easykit: if the selected value didn't stick (e.g. today has no tasks), pick the first available
+    if (easykit && !filterEl.value && filterEl.options.length > 0) {
+      filterEl.value = filterEl.options[0].value;
+    }
   }
 
   function populateLeaderFilter(tasks) {
     const filterEl = document.getElementById("leaderFilter");
-    if (filterEl.style.display === "none") return;
+    if (!filterEl || filterEl.style.display === "none") return;
 
     const leaders = new Set();
     tasks.forEach(t => {
@@ -163,6 +184,13 @@ const TaskList = (() => {
     filterEl.value = prev;
   }
 
+  // Check if a task belongs to "Easykit VOLZET" (catch-all project, not a real delivery)
+  function isEasykitVolzet(task) {
+    const pid = task.project_id;
+    const pName = (Array.isArray(pid) ? pid[1] : "") || task.project_name || "";
+    return pName.toLowerCase().includes("easykit volzet");
+  }
+
   function filterAndRender() {
     const selected = document.getElementById("dateFilter").value;
     const leader   = document.getElementById("leaderFilter").value;
@@ -173,6 +201,11 @@ const TaskList = (() => {
     }
     if (leader) {
       filtered = filtered.filter(t => t.project_leader === leader);
+    }
+
+    // Easykit: hide "Easykit VOLZET" tasks (not real deliveries)
+    if (Auth.hasRole("easykit")) {
+      filtered = filtered.filter(t => !isEasykitVolzet(t));
     }
 
     render(filtered);
@@ -190,70 +223,158 @@ const TaskList = (() => {
       return;
     }
 
-    tasks.sort((a, b) => getTaskDate(a).localeCompare(getTaskDate(b)));
     statusEl.textContent = `${tasks.length} task${tasks.length === 1 ? "" : "s"} found.`;
 
-    // Warehouse role: group by worker, Hendrika tasks → "Easykit" at bottom
-    if (Auth.hasRole("warehouse")) {
-      renderWarehouseGrouped(tasks, listEl);
+    // Easykit role: keep the exact order from Odoo planning (no sort) + show route map
+    if (Auth.hasRole("easykit")) {
+      tasks.forEach(t => listEl.appendChild(buildTaskCard(t)));
+      renderRouteMap(tasks);
       return;
     }
+
+    // Warehouse: hide Easykit tasks (Dries assigned)
+    if (Auth.hasRole("warehouse")) {
+      tasks = tasks.filter(t => !(t.workers || []).some(w => w.toLowerCase().startsWith("dries ")));
+    }
+
+    tasks.sort((a, b) => getTaskDate(a).localeCompare(getTaskDate(b)));
 
     tasks.forEach(t => listEl.appendChild(buildTaskCard(t)));
   }
 
-  // ── Warehouse grouped render ──
+  // ── Easykit route map ──
 
-  function renderWarehouseGrouped(tasks, listEl) {
-    const easykitTasks = [];
-    const workerTasks  = []; // non-easykit
+  let routeMap = null;       // Leaflet map instance
+  let mapGeneration = 0;     // Cancel stale async renders
 
-    tasks.forEach(t => {
-      const leader  = (t.project_leader || "").toLowerCase();
-      const workers = (t.workers || []).map(w => w.toLowerCase());
-      if (leader.includes("hendrika") || workers.some(w => w.startsWith("dries "))) {
-        easykitTasks.push(t);
-      } else {
-        workerTasks.push(t);
+  const GEO_CACHE_KEY = "geoCache";
+
+  function readGeoCache() {
+    try { return JSON.parse(localStorage.getItem(GEO_CACHE_KEY)) || {}; } catch { return {}; }
+  }
+  function writeGeoCache(cache) {
+    try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)); } catch { /* ok */ }
+  }
+
+  async function geocodeAddress(address, cache) {
+    if (cache[address]) return cache[address];
+
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?` +
+        `format=json&countrycodes=be&limit=1&q=${encodeURIComponent(address)}`,
+        { headers: { "Accept-Language": "nl" } }
+      );
+      const data = await res.json();
+      if (data && data.length > 0) {
+        const coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+        cache[address] = coords;
+        writeGeoCache(cache);
+        return coords;
       }
-    });
-
-    // Group non-easykit tasks by worker name
-    const groups = new Map(); // worker name → [task, …]
-    workerTasks.forEach(t => {
-      const workers = t.workers || [];
-      if (workers.length === 0) {
-        // No workers assigned — put under "Unassigned"
-        if (!groups.has("Unassigned")) groups.set("Unassigned", []);
-        groups.get("Unassigned").push(t);
-      } else {
-        workers.forEach(w => {
-          if (!groups.has(w)) groups.set(w, []);
-          groups.get(w).push(t);
-        });
-      }
-    });
-
-    // Render worker groups (sorted alphabetically)
-    const sortedWorkers = Array.from(groups.keys()).sort();
-    sortedWorkers.forEach(worker => {
-      const header = document.createElement("div");
-      header.className = "task-group-header";
-      header.textContent = worker;
-      listEl.appendChild(header);
-
-      groups.get(worker).forEach(t => listEl.appendChild(buildTaskCard(t)));
-    });
-
-    // Render Easykit section at the bottom
-    if (easykitTasks.length > 0) {
-      const header = document.createElement("div");
-      header.className = "task-group-header task-group-header--easykit";
-      header.textContent = "Easykit";
-      listEl.appendChild(header);
-
-      easykitTasks.forEach(t => listEl.appendChild(buildTaskCard(t)));
+    } catch (err) {
+      console.warn("[tasks] Geocode error for:", address, err);
     }
+    return null;
+  }
+
+  async function renderRouteMap(tasks) {
+    const gen = ++mapGeneration; // Mark this render generation
+
+    const mapCard = document.getElementById("routeMapCard");
+    const mapEl   = document.getElementById("routeMap");
+    if (!mapCard || !mapEl) return;
+
+    // Only render when address lookups have resolved (address_street is set by Lookups)
+    // If not resolved yet, skip — we'll be called again after enrichment
+    const hasEnrichedAddresses = tasks.some(t => t.address_street);
+    if (!hasEnrichedAddresses) return;
+
+    // Collect addresses with their task order
+    // Use street + zip for geocoding (reliable), full address for display
+    const stops = tasks
+      .map((t, i) => {
+        const display = t.address_full || t.address_name || "";
+        // Build a clean geocoding query: "Street, Zip, Belgium"
+        const geoQuery = t.address_street && t.address_zip
+          ? `${t.address_street}, ${t.address_zip}, Belgium`
+          : "";
+        return {
+          index: i + 1,
+          name: t.name || t.display_name || "Task",
+          address: display,
+          geoQuery,
+        };
+      })
+      .filter(s => s.geoQuery);
+
+    if (stops.length === 0) {
+      mapCard.style.display = "none";
+      return;
+    }
+
+    mapCard.style.display = "";
+
+    // Init or reset map
+    if (routeMap) {
+      routeMap.remove();
+      routeMap = null;
+    }
+    routeMap = L.map(mapEl).setView([50.85, 4.35], 8); // Belgium center
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+      maxZoom: 18,
+    }).addTo(routeMap);
+
+    // Geocode all addresses (with 1s delay between to respect Nominatim policy)
+    const geoCache = readGeoCache();
+    const coords = [];
+
+    for (let i = 0; i < stops.length; i++) {
+      if (gen !== mapGeneration) return; // Stale — a newer render started
+
+      const stop = stops[i];
+      // Small delay between uncached requests to respect Nominatim rate limit
+      if (i > 0 && !geoCache[stop.geoQuery]) {
+        await new Promise(r => setTimeout(r, 1100));
+      }
+      if (gen !== mapGeneration) return; // Check again after wait
+
+      const c = await geocodeAddress(stop.geoQuery, geoCache);
+      if (c) {
+        coords.push({ ...stop, ...c });
+      }
+    }
+
+    if (gen !== mapGeneration) return; // Final stale check
+
+    if (coords.length === 0) {
+      mapCard.style.display = "none";
+      return;
+    }
+
+    // Add numbered markers
+    coords.forEach(stop => {
+      const icon = L.divIcon({
+        className: "route-marker",
+        html: `<span>${stop.index}</span>`,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+      });
+      L.marker([stop.lat, stop.lng], { icon })
+        .bindPopup(`<strong>${stop.index}. ${escapeHtml(stop.name)}</strong><br>${escapeHtml(stop.address)}`)
+        .addTo(routeMap);
+    });
+
+    // Draw route line
+    if (coords.length > 1) {
+      const latlngs = coords.map(c => [c.lat, c.lng]);
+      L.polyline(latlngs, { color: "#0097A7", weight: 3, opacity: 0.7, dashArray: "8 4" }).addTo(routeMap);
+    }
+
+    // Fit map to show all markers
+    const bounds = L.latLngBounds(coords.map(c => [c.lat, c.lng]));
+    routeMap.fitBounds(bounds, { padding: [30, 30] });
   }
 
   // ── Build a single task card element ──
@@ -265,12 +386,7 @@ const TaskList = (() => {
       || (Array.isArray(t.x_studio_afleveradres) ? t.x_studio_afleveradres[1] : "")
       || t.address || "";
 
-    let projectName = t.project_name || "";
-    if (!projectName && Array.isArray(t.project_id) && t.project_id[1]) {
-      const raw = t.project_id[1];
-      const sep = raw.indexOf(" - S");
-      projectName = sep > 0 ? raw.substring(0, sep) : raw;
-    }
+    const projectName = t.project_name || "";
 
     const card = document.createElement("div");
     card.className = "task-card";
@@ -282,16 +398,21 @@ const TaskList = (() => {
     const titleSection = document.createElement("div");
     titleSection.className = "task-card-title-section";
 
-    if (projectName) {
+    // Easykit: task name is the header, project name is the subtitle
+    const easykit = Auth.hasRole("easykit");
+    const headerText = easykit ? taskName : projectName;
+    const subText    = easykit ? projectName : (taskName + (t.order_number ? ` \u2022 ${t.order_number}` : ""));
+
+    if (headerText) {
       const proj = document.createElement("div");
       proj.className = "task-card-project";
-      proj.textContent = projectName;
+      proj.textContent = headerText;
       titleSection.appendChild(proj);
     }
 
     const nameEl = document.createElement("div");
     nameEl.className = "task-card-name";
-    nameEl.textContent = taskName + (t.order_number ? ` \u2022 ${t.order_number}` : "");
+    nameEl.textContent = easykit ? subText : subText;
     titleSection.appendChild(nameEl);
 
     header.appendChild(titleSection);
@@ -367,58 +488,83 @@ const TaskList = (() => {
   // ── Open single task ──
 
   async function openTask(task) {
+    const easykit = Auth.hasRole("easykit");
+
     Router.showView("taskDetail");
     TaskDetailView.render(task);
-    TaskDetailView.renderTeam(allTasks);
     TaskDetailView.setLoadingPdfs();
-    Collectors.init();
+
+    if (!easykit) {
+      TaskDetailView.renderTeam(allTasks);
+      Collectors.init();
+    }
+
+    // Easykit: load task photos
+    if (easykit) {
+      TaskDetailView.loadTaskPhotos();
+    }
 
     // project_id is already in the task list response
-    if (task.project_id) {
-      TaskDetailView.setProjectId(task.project_id);
+    const hasPid = !!task.project_id;
+    const pid = hasPid
+      ? (Array.isArray(task.project_id) ? task.project_id[0] : task.project_id)
+      : null;
 
+    if (pid) TaskDetailView.setProjectId(pid);
+
+    if (!easykit && pid) {
+      // Pass task ID so collector status updates reference the right Odoo task
+      Collectors.setTaskId(task.id);
       // Pass project name so collector photos use a readable directory name
-      let pName = task.project_name || "";
-      if (!pName && Array.isArray(task.project_id) && task.project_id[1]) {
-        const raw = task.project_id[1];
-        const sep = raw.indexOf(" - S");
-        pName = sep > 0 ? raw.substring(0, sep) : raw;
-      }
-      if (pName) Collectors.setProjectName(pName);
+      if (task.project_name) Collectors.setProjectName(task.project_name);
+      Collectors.setProjectId(pid);
+    }
 
-      Collectors.setProjectId(task.project_id);
+    // Fetch task info (description) — always fetch for all roles using task_id
+    const infoParams = { task_id: task.id };
+    if (pid) infoParams.id = pid;
+    const infoPromise = Api.get(`${CONFIG.WEBHOOK_TASKS}/task-info`, infoParams);
 
-      // Fetch task info and documents in parallel (two separate n8n flows)
-      const params = { id: task.project_id, task_id: task.id };
-      const infoPromise = Api.get(`${CONFIG.WEBHOOK_TASKS}/task-info`, params);
-      const docsPromise = Api.get(`${CONFIG.WEBHOOK_TASKS}/task-docs`, params);
+    // Fetch documents (PDFs) — needs project_id
+    const docsPromise = pid
+      ? Api.get(`${CONFIG.WEBHOOK_TASKS}/task-docs`, { id: pid, task_id: task.id })
+      : null;
 
-      // Task info comes back fast — render description immediately
-      try {
-        const res = await infoPromise;
-        if (res.ok) {
-          const data = await res.json();
+    // Task info comes back fast — render description immediately
+    try {
+      const res = await infoPromise;
+      if (res.ok) {
+        const text = await res.text();
+        if (text) {
+          const data = JSON.parse(text);
           const payload = Array.isArray(data) ? data[0] : (data?.data?.[0] || data);
           if (payload?.description !== undefined) {
             task.description = payload.description;
             TaskDetailView.render(task);
           }
         }
-      } catch (err) {
-        console.error("[tasks] Task info fetch error:", err);
       }
+    } catch (err) {
+      console.error("[tasks] Task info fetch error:", err);
+    }
 
-      // Documents come back slower — render PDFs when ready
+    // Documents come back slower — render PDFs when ready
+    if (docsPromise) {
       try {
         const res = await docsPromise;
         if (res.ok) {
-          const data = await res.json();
-          const payload = Array.isArray(data) ? data[0] : (data?.data?.[0] || data);
-          TaskDetailView.renderPdfs(payload?.pdfs || []);
+          const text = await res.text();
+          if (text) {
+            const data = JSON.parse(text);
+            const payload = Array.isArray(data) ? data[0] : (data?.data?.[0] || data);
+            TaskDetailView.renderPdfs(payload?.pdfs || []);
+          }
         }
       } catch (err) {
         console.error("[tasks] Document fetch error:", err);
       }
+    } else {
+      TaskDetailView.renderPdfs([]);
     }
   }
 
@@ -438,6 +584,7 @@ const TaskList = (() => {
     // 1) Show cached data instantly (if available for this pastDays scope)
     const cached = readCache(pastDays);
     if (cached && cached.length > 0) {
+      Lookups.enrichTasks(cached);
       allTasks = cached;
       populateDateFilter(cached);
       populateLeaderFilter(cached);
@@ -452,7 +599,7 @@ const TaskList = (() => {
 
     // 2) Fetch fresh data in background
     try {
-      const res = await Api.get(`${CONFIG.WEBHOOK_TASKS}/tasks`, {
+      const res = await Api.get(`${CONFIG.WEBHOOK_TASKS}/tasks-quick`, {
         past_days: pastDays,
       });
       const text = await res.text();
@@ -471,18 +618,34 @@ const TaskList = (() => {
       else if (data?.id !== undefined) tasks = [data];
       else tasks = [];
 
-      // 3) Only re-render if data actually changed
-      const fresh = JSON.stringify(tasks);
-      const stale = JSON.stringify(allTasks);
-      if (fresh !== stale) {
+      // 3) Enrich from in-memory lookup cache first (instant, no network)
+      Lookups.enrichTasks(tasks);
+
+      // Render immediately with whatever names we already have cached
+      allTasks = tasks;
+      populateDateFilter(tasks);
+      populateLeaderFilter(tasks);
+      filterAndRender();
+
+      // Snapshot before lookups so we can detect new data
+      const beforeLookups = JSON.stringify(tasks);
+
+      // 4) Fetch any missing lookups (skipped entirely when TTL is fresh)
+      try {
+        await Lookups.resolveForTasks(tasks);
+        Lookups.enrichTasks(tasks);
+      } catch (err) {
+        console.warn("[tasks] Lookup enrichment failed (non-fatal):", err);
+      }
+
+      // 5) Re-render if lookups added new data (e.g. project names)
+      if (JSON.stringify(tasks) !== beforeLookups) {
         allTasks = tasks;
         populateDateFilter(tasks);
         populateLeaderFilter(tasks);
         filterAndRender();
-      } else {
-        // Data unchanged — just clear the "updating…" hint
-        statusEl.textContent = `${tasks.length} task${tasks.length === 1 ? "" : "s"} found.`;
       }
+      statusEl.textContent = `${tasks.length} task${tasks.length === 1 ? "" : "s"} found.`;
 
       writeCache(pastDays, tasks);
     } catch (err) {
@@ -497,7 +660,7 @@ const TaskList = (() => {
   // ── Register view ──
 
   Router.register("tasks", {
-    template,
+    get template() { return buildListTemplate(); },
     mount,
     unmount,
     tab: { label: "Tasks", roles: ["*"] },

@@ -86,26 +86,6 @@
   padding: 8px 16px 12px;
 }
 
-/* ── Task group headers (warehouse view) ── */
-
-.task-group-header {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text);
-  margin: 20px 0 4px;
-  padding: 8px 0 4px;
-  border-bottom: 2px solid var(--primary);
-}
-
-.task-group-header:first-child {
-  margin-top: 8px;
-}
-
-.task-group-header--easykit {
-  border-bottom-color: var(--muted);
-  color: var(--muted);
-}
-
 /* ── Task detail top row (back + refresh) ── */
 
 .detail-top-row {
@@ -385,6 +365,139 @@
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.5px;
+}
+
+/* ── Detail map (task detail, easykit) ── */
+
+.detail-map {
+  height: 250px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  z-index: 0;
+}
+
+/* ── Route map (easykit role) ── */
+
+.route-map {
+  height: 300px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  z-index: 0;
+}
+
+.route-marker {
+  background: var(--primary);
+  color: #fff;
+  border-radius: 50%;
+  width: 28px !important;
+  height: 28px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+/* ── Task photos (easykit role) ── */
+
+.task-photo-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.task-photo-thumb {
+  width: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.task-photo-img-wrap {
+  position: relative;
+  width: 100px;
+  height: 100px;
+}
+
+.task-photo-img-wrap img {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.task-photo-img-wrap:hover img {
+  border-color: var(--primary);
+  transform: scale(1.05);
+}
+
+.task-photo-footer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+}
+
+.task-photo-label {
+  font-size: 10px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.task-photo-delete-btn {
+  font-size: 9px;
+  padding: 1px 5px;
+  border: 1px solid #E53E3E;
+  background: transparent;
+  color: #E53E3E;
+  border-radius: var(--radius);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.task-photo-delete-btn:active {
+  background: #E53E3E;
+  color: #fff;
+}
+
+.task-photo-pdf-icon {
+  width: 100px;
+  height: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: #FEF2F2;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 32px;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.task-photo-pdf-icon span {
+  font-size: 11px;
+  font-weight: 700;
+  color: #991B1B;
+  letter-spacing: 0.5px;
+}
+
+.task-photo-pdf-icon:hover {
+  border-color: var(--primary);
+  background: #FEE2E2;
 }
 
 /* Responsive */

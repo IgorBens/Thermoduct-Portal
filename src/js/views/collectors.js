@@ -9,6 +9,7 @@
 const Collectors = (() => {
   let projectId = null;
   let projectName = null;
+  let taskId = null;
 
   // ── Fetch collector data ──
 
@@ -20,7 +21,12 @@ const Collectors = (() => {
 
     try {
       const res = await Api.get(CONFIG.WEBHOOK_COLLECTORS, { project_id: pid });
-      const data = await res.json();
+      const text = await res.text();
+      if (!text) {
+        container.innerHTML = '<p class="hint">No collectors found.</p>';
+        return;
+      }
+      const data = JSON.parse(text);
 
       const collectoren = Array.isArray(data)
         ? data
@@ -212,10 +218,123 @@ const Collectors = (() => {
     }
     parts.push(photoName);
     const collectorPhotoId = parts.join(" - ");
+
+    // Status section (Collector op Druk + Foto's Uitvoering) — between kringen and photos
+    body.appendChild(buildStatusSection(collector, collectorPhotoId));
+
     body.appendChild(buildPhotoSection(collectorPhotoId));
 
     el.appendChild(body);
     return el;
+  }
+
+  // ── Status section per collector (Collector op Druk + Foto's Uitvoering) ──
+
+  function buildStatusSection(collector, collectorId) {
+    const section = document.createElement("div");
+    section.className = "coll-status";
+
+    // ── Checkbox: Collector op Druk ──
+    const drukRow = document.createElement("div");
+    drukRow.className = "coll-status-row";
+
+    const drukLabel = document.createElement("label");
+    drukLabel.className = "coll-status-check";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = !!collector.collector_op_druk;
+
+    const labelText = document.createElement("span");
+    labelText.className = "coll-status-check-text";
+    labelText.textContent = "Collector op Druk";
+
+    drukLabel.appendChild(checkbox);
+    drukLabel.appendChild(labelText);
+    drukRow.appendChild(drukLabel);
+
+    // Show installateur name next to the checkbox
+    const installateurSpan = document.createElement("span");
+    installateurSpan.className = "coll-status-installateur";
+    if (collector.collector_op_druk && collector.collector_installateur) {
+      installateurSpan.textContent = collector.collector_installateur;
+    }
+    drukRow.appendChild(installateurSpan);
+
+    checkbox.addEventListener("change", async () => {
+      const user = Auth.getUser();
+      const userName = user?.name || user?.preferred_username || "";
+
+      if (checkbox.checked) {
+        installateurSpan.textContent = userName;
+      } else {
+        installateurSpan.textContent = "";
+      }
+
+      try {
+        await Api.post(CONFIG.WEBHOOK_COLLECTOR_STATUS, {
+          project_id: projectId,
+          task_id: taskId,
+          collector_id: collectorId,
+          odoo_id: collector.id || null,
+          collector_op_druk: checkbox.checked,
+          user_name: userName,
+          user_email: user?.email || "",
+        });
+      } catch (err) {
+        console.error("[collectors] Pressure status update error:", err);
+      }
+    });
+
+    section.appendChild(drukRow);
+
+    // ── Selection: Foto's Uitvoering (projectleider only) ──
+    if (Auth.hasRole("projectleider")) {
+      const fotosRow = document.createElement("div");
+      fotosRow.className = "coll-status-row";
+
+      const fotosLabel = document.createElement("span");
+      fotosLabel.className = "coll-status-label";
+      fotosLabel.textContent = "Foto\u2019s Uitvoering";
+      fotosRow.appendChild(fotosLabel);
+
+      const fotosSelect = document.createElement("select");
+      fotosSelect.className = "coll-status-select";
+
+      [
+        { value: "",                  label: "Geen Foto\u2019s" },
+        { value: "fotos_geupload",    label: "Foto\u2019s Ge\u00fcpload" },
+        { value: "fotos_goedgekeurd", label: "Foto\u2019s Goedgekeurd" },
+      ].forEach(opt => {
+        const el = document.createElement("option");
+        el.value = opt.value;
+        el.textContent = opt.label;
+        fotosSelect.appendChild(el);
+      });
+
+      if (collector.fotos_uitvoering) {
+        fotosSelect.value = collector.fotos_uitvoering;
+      }
+
+      fotosSelect.addEventListener("change", async () => {
+        try {
+          await Api.post(CONFIG.WEBHOOK_COLLECTOR_STATUS, {
+            project_id: projectId,
+            task_id: taskId,
+            collector_id: collectorId,
+            odoo_id: collector.id || null,
+            fotos_uitvoering: fotosSelect.value,
+          });
+        } catch (err) {
+          console.error("[collectors] Photo status update error:", err);
+        }
+      });
+
+      fotosRow.appendChild(fotosSelect);
+      section.appendChild(fotosRow);
+    }
+
+    return section;
   }
 
   // ── Photo section per collector ──
@@ -405,31 +524,40 @@ const Collectors = (() => {
     btn.disabled = true;
     btn.textContent = "Uploading...";
 
+    const total = validFiles.length;
+    let done = 0;
     let anySuccess = false;
-    for (const file of validFiles) {
-      showPhotoStatus(statusEl, "uploading", `Uploading ${file.name}...`);
+
+    showPhotoStatus(statusEl, "uploading", `Uploading 0/${total} photos...`);
+
+    await parallelMap(validFiles, 3, async (file) => {
       try {
-        const base64 = await fileToBase64(file);
+        const { base64, filename } = await compressImage(file);
         const payload = {
           project_id: projectId,
           collector_id: collectorId,
-          filename: file.name,
+          filename,
           data: base64,
         };
         if (projectName) payload.project_name = projectName;
         const res = await Api.post(CONFIG.WEBHOOK_COLLECTOR_PHOTOS, payload);
         const result = await res.json();
+        done++;
         if (res.ok && result.success !== false) {
-          showPhotoStatus(statusEl, "success", `${file.name} uploaded!`);
           anySuccess = true;
+          showPhotoStatus(statusEl, "uploading", `Uploaded ${done}/${total} photos...`);
         } else {
-          showPhotoStatus(statusEl, "error", result.message || `${file.name} failed`);
+          showPhotoStatus(statusEl, "uploading", `Uploaded ${done}/${total} photos (${file.name} failed)`);
         }
       } catch (err) {
+        done++;
         console.error("[collectors] Photo upload error:", err);
-        showPhotoStatus(statusEl, "error", `${file.name} — network error`);
+        showPhotoStatus(statusEl, "uploading", `Uploaded ${done}/${total} photos (${file.name} failed)`);
       }
-    }
+    });
+
+    showPhotoStatus(statusEl, anySuccess ? "success" : "error",
+      anySuccess ? `${done} photos uploaded!` : "Upload failed");
 
     btn.disabled = false;
     btn.textContent = "Add photo";
@@ -499,8 +627,13 @@ const Collectors = (() => {
     init() {
       projectId = null;
       projectName = null;
+      taskId = null;
       const container = document.getElementById("collectorContainer");
       if (container) container.innerHTML = '<p class="hint">Loading collectors...</p>';
+    },
+
+    setTaskId(id) {
+      if (id) taskId = id;
     },
 
     setProjectId(pid) {

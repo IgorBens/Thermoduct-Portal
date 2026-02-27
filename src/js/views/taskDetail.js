@@ -5,7 +5,11 @@ const TaskDetailView = (() => {
 
   let currentProjectId = null;
 
-  const template = `
+  const isEasykit = () => Auth.hasRole("easykit");
+
+  function buildTemplate() {
+    const easykit = isEasykit();
+    return `
     <div class="detail-top-row">
       <button id="backToList" class="secondary">
         &larr; Back to list
@@ -13,10 +17,24 @@ const TaskDetailView = (() => {
       <button id="taskRefreshBtn" class="secondary btn-sm">Refresh</button>
     </div>
     <div id="taskDetail"></div>
+    ${easykit ? "" : `
     <div class="card" id="teamCard" style="display:none">
       <div class="section-title">Scheduled on this site</div>
       <div id="teamList" class="hint">&mdash;</div>
+    </div>`}
+    ${easykit ? `
+    <div class="card" id="detailMapCard" style="display:none">
+      <div class="section-title">Location</div>
+      <div id="detailMap" class="detail-map"></div>
     </div>
+    <div class="card">
+      <div class="section-title-row">
+        <div class="section-title" style="margin-bottom:0">Photos</div>
+        <button id="taskPhotoUploadBtn" class="secondary btn-sm">Add file</button>
+      </div>
+      <div id="taskPhotoStatus"></div>
+      <div id="taskPhotoGallery" class="task-photo-gallery hint">&mdash;</div>
+    </div>` : `
     <div class="card">
       <div class="section-title-row">
         <div class="section-title" style="margin-bottom:0">Files</div>
@@ -29,8 +47,9 @@ const TaskDetailView = (() => {
     <div class="card">
       <div class="section-title">Collectors</div>
       <div id="collectorContainer" class="hint">Loading collectors...</div>
-    </div>
+    </div>`}
   `;
+  }
 
   let currentTask = null;
 
@@ -46,6 +65,12 @@ const TaskDetailView = (() => {
     // Show dropzone only for project leaders
     if (Auth.hasRole("projectleider")) {
       renderDropzone();
+    }
+
+    // Easykit: bind photo upload button
+    const photoBtn = document.getElementById("taskPhotoUploadBtn");
+    if (photoBtn) {
+      photoBtn.addEventListener("click", () => triggerTaskPhotoUpload());
     }
   }
 
@@ -135,20 +160,25 @@ const TaskDetailView = (() => {
 
     if (validFiles.length === 0) return;
 
-    // Upload files sequentially with a delay so Odoo has time to commit the folder
-    console.log(`[taskDetail] uploading ${validFiles.length} files SEQUENTIALLY`);
-    for (let i = 0; i < validFiles.length; i++) {
-      // Wait 3s between uploads so Odoo can register the newly created folder
-      if (i > 0) {
-        console.log(`[taskDetail] waiting 3s for Odoo to sync…`);
-        await new Promise(r => setTimeout(r, 3000));
-      }
-      const file = validFiles[i];
-      console.log(`[taskDetail] starting upload ${i + 1}/${validFiles.length}: ${file.name}`);
-      try {
-        await uploadPdf(file);
-        console.log(`[taskDetail] finished upload ${i + 1}/${validFiles.length}: ${file.name}`);
-      } catch { /* individual errors already handled in uploadPdf */ }
+    const total = validFiles.length;
+    let done = 0;
+    console.log(`[taskDetail] uploading ${total} files (3 parallel, compressed)`);
+
+    // First file goes alone so Odoo can create the folder, then rest in parallel
+    const first = validFiles[0];
+    const rest  = validFiles.slice(1);
+
+    console.log(`[taskDetail] uploading first file to ensure folder exists: ${first.name}`);
+    try { await uploadPdf(first); } catch { /* handled in uploadPdf */ }
+    done++;
+
+    if (rest.length > 0) {
+      await parallelMap(rest, 3, async (file) => {
+        try {
+          await uploadPdf(file);
+        } catch { /* handled in uploadPdf */ }
+        done++;
+      });
     }
   }
 
@@ -183,11 +213,11 @@ const TaskDetailView = (() => {
     const row = showUploadStatus(file.name, "uploading", "Uploading\u2026");
 
     try {
-      const base64 = await fileToBase64(file);
+      const { base64, filename } = await compressImage(file);
 
       const res = await Api.post(CONFIG.WEBHOOK_PDF_UPLOAD, {
         project_id: currentProjectId,
-        filename:   file.name,
+        filename,
         data:       base64,
       });
 
@@ -196,10 +226,11 @@ const TaskDetailView = (() => {
       if (row) row.remove();
 
       if (res.ok && result.success !== false) {
-        showUploadStatus(file.name, "success", "Uploaded!");
+        showUploadStatus(filename, "success", "Uploaded!");
 
         // Optimistically add the file to the UI immediately
-        appendPdfRow({ name: file.name, mimetype: file.type || "application/pdf", data: base64 });
+        const mime = /\.pdf$/i.test(filename) ? "application/pdf" : "image/jpeg";
+        appendPdfRow({ name: filename, mimetype: mime, data: base64 });
         return true;
       } else {
         showUploadStatus(file.name, "error", result.message || "Upload failed");
@@ -252,6 +283,12 @@ const TaskDetailView = (() => {
       console.error("[taskDetail] Document refresh error:", err);
     }
 
+    // Easykit: also refresh task photos
+    if (isEasykit()) loadTaskPhotos();
+
+    // Refresh collectors (projectleider view)
+    if (!isEasykit()) Collectors.refresh();
+
     if (btn) { btn.disabled = false; btn.textContent = "Refresh"; }
   }
 
@@ -297,17 +334,23 @@ const TaskDetailView = (() => {
     const card = document.createElement("div");
     card.className = "task-detail";
 
-    if (task.project_name) {
+    const taskName = task.name || task.display_name || "Task";
+    const easykit = isEasykit();
+
+    // Easykit: task name is the big header, project name is the subtitle
+    const headerText = easykit ? taskName : task.project_name;
+    const subText    = easykit ? (task.project_name || "") : (taskName + (task.order_number ? ` \u2022 ${task.order_number}` : ""));
+
+    if (headerText) {
       const proj = document.createElement("div");
       proj.className = "task-detail-project";
-      proj.textContent = task.project_name;
+      proj.textContent = headerText;
       card.appendChild(proj);
     }
 
     const nameRow = document.createElement("div");
     nameRow.className = "task-detail-name";
-    nameRow.textContent = task.name || task.display_name || "Task";
-    if (task.order_number) nameRow.textContent += ` \u2022 ${task.order_number}`;
+    nameRow.textContent = subText;
     card.appendChild(nameRow);
 
     const grid = document.createElement("div");
@@ -365,6 +408,74 @@ const TaskDetailView = (() => {
     }
 
     el.appendChild(card);
+
+    // Render single-task map for easykit
+    if (isEasykit()) renderDetailMap(task);
+  }
+
+  // ── Detail map (easykit) ──
+
+  let detailMapInstance = null;
+
+  async function renderDetailMap(task) {
+    const mapCard = document.getElementById("detailMapCard");
+    const mapEl   = document.getElementById("detailMap");
+    if (!mapCard || !mapEl) return;
+
+    const geoQuery = task.address_street && task.address_zip
+      ? `${task.address_street}, ${task.address_zip}, Belgium`
+      : "";
+
+    if (!geoQuery) { mapCard.style.display = "none"; return; }
+
+    // Geocode using Nominatim (with localStorage cache)
+    const GEO_KEY = "geoCache";
+    let cache;
+    try { cache = JSON.parse(localStorage.getItem(GEO_KEY)) || {}; } catch { cache = {}; }
+
+    let coords = cache[geoQuery] || null;
+    if (!coords) {
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?` +
+          `format=json&countrycodes=be&limit=1&q=${encodeURIComponent(geoQuery)}`,
+          { headers: { "Accept-Language": "nl" } }
+        );
+        const data = await res.json();
+        if (data && data.length > 0) {
+          coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+          cache[geoQuery] = coords;
+          try { localStorage.setItem(GEO_KEY, JSON.stringify(cache)); } catch { /* ok */ }
+        }
+      } catch (err) {
+        console.warn("[taskDetail] Geocode error:", err);
+      }
+    }
+
+    if (!coords) { mapCard.style.display = "none"; return; }
+
+    mapCard.style.display = "";
+
+    // Init or reset map
+    if (detailMapInstance) {
+      detailMapInstance.remove();
+      detailMapInstance = null;
+    }
+
+    detailMapInstance = L.map(mapEl).setView([coords.lat, coords.lng], 15);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+      maxZoom: 18,
+    }).addTo(detailMapInstance);
+
+    const display = task.address_full || task.address_name || "";
+    L.marker([coords.lat, coords.lng])
+      .addTo(detailMapInstance)
+      .bindPopup(`<strong>${escapeHtml(task.name || "Task")}</strong><br>${escapeHtml(display)}`)
+      .openPopup();
+
+    // Fix tile rendering when map container was hidden
+    setTimeout(() => detailMapInstance.invalidateSize(), 200);
   }
 
   // ── Delete PDF from Odoo ──
@@ -560,6 +671,209 @@ const TaskDetailView = (() => {
     });
   }
 
+  // ── Task photos (easykit role) ──
+
+  function triggerTaskPhotoUpload() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*,.pdf";
+    input.multiple = true;
+    input.addEventListener("change", () => {
+      if (input.files.length > 0) handleTaskPhotoUpload(Array.from(input.files));
+    });
+    input.click();
+  }
+
+  async function handleTaskPhotoUpload(files) {
+    const statusEl = document.getElementById("taskPhotoStatus");
+    const gallery  = document.getElementById("taskPhotoGallery");
+    const btn      = document.getElementById("taskPhotoUploadBtn");
+
+    const validFiles = files.filter(f => /^image\//i.test(f.type) || f.type === "application/pdf");
+    if (validFiles.length === 0) {
+      showTaskPhotoStatus(statusEl, "error", "Only images and PDFs are allowed.");
+      return;
+    }
+
+    if (btn) { btn.disabled = true; btn.textContent = "Uploading\u2026"; }
+
+    const total = validFiles.length;
+    let done = 0;
+    let anySuccess = false;
+
+    showTaskPhotoStatus(statusEl, "uploading", `Uploading 0/${total} files\u2026`);
+
+    await parallelMap(validFiles, 3, async (file) => {
+      try {
+        const { base64, filename } = await compressImage(file);
+        const res = await Api.post(CONFIG.WEBHOOK_TASK_PHOTOS, {
+          task_id:  currentTask.id,
+          filename,
+          data:     base64,
+        });
+        const result = await res.json();
+        done++;
+        if (res.ok && result.success !== false) {
+          anySuccess = true;
+          showTaskPhotoStatus(statusEl, "uploading", `Uploaded ${done}/${total} files\u2026`);
+        } else {
+          showTaskPhotoStatus(statusEl, "uploading", `Uploaded ${done}/${total} files (${file.name} failed)`);
+        }
+      } catch (err) {
+        done++;
+        console.error("[taskDetail] Task photo upload error:", err);
+        showTaskPhotoStatus(statusEl, "uploading", `Uploaded ${done}/${total} files (${file.name} failed)`);
+      }
+    });
+
+    showTaskPhotoStatus(statusEl, anySuccess ? "success" : "error",
+      anySuccess ? `${done} files uploaded!` : "Upload failed");
+
+    if (btn) { btn.disabled = false; btn.textContent = "Add file"; }
+    if (anySuccess) setTimeout(() => loadTaskPhotos(), 800);
+    setTimeout(() => { if (statusEl) statusEl.innerHTML = ""; }, 4000);
+  }
+
+  async function loadTaskPhotos() {
+    const gallery = document.getElementById("taskPhotoGallery");
+    if (!gallery || !currentTask) return;
+
+    gallery.className = "task-photo-gallery hint";
+    gallery.textContent = "Loading files\u2026";
+
+    try {
+      const res = await Api.get(CONFIG.WEBHOOK_TASK_PHOTOS, { task_id: currentTask.id });
+      const raw = await res.json();
+
+      let photos;
+      if (Array.isArray(raw)) {
+        photos = raw[0]?.photos || raw[0]?.data || raw;
+      } else {
+        photos = raw?.photos || raw?.data || [];
+      }
+      renderTaskPhotoGallery(photos, gallery);
+    } catch {
+      gallery.className = "task-photo-gallery hint";
+      gallery.textContent = "No files yet.";
+    }
+  }
+
+  function renderTaskPhotoGallery(photos, gallery) {
+    gallery.innerHTML = "";
+    if (!photos || photos.length === 0) {
+      gallery.className = "task-photo-gallery hint";
+      gallery.textContent = "No files yet.";
+      return;
+    }
+
+    gallery.className = "task-photo-gallery";
+    photos.forEach(photo => {
+      const mime = photo.mimetype || "image/jpeg";
+      const isPdf = /pdf/i.test(mime);
+
+      const thumb = document.createElement("div");
+      thumb.className = "task-photo-thumb";
+
+      const imgWrap = document.createElement("div");
+      imgWrap.className = "task-photo-img-wrap";
+
+      if (isPdf) {
+        // PDF: show file icon placeholder
+        const pdfIcon = document.createElement("div");
+        pdfIcon.className = "task-photo-pdf-icon";
+        pdfIcon.innerHTML = "&#128196;<span>PDF</span>";
+        pdfIcon.addEventListener("click", () => {
+          if (photo.data) viewFile(photo.data, mime);
+        });
+        imgWrap.appendChild(pdfIcon);
+      } else {
+        // Image: show thumbnail
+        const img = document.createElement("img");
+        if (photo.data) {
+          img.src = `data:${mime};base64,${photo.data}`;
+        } else if (photo.url) {
+          img.src = photo.url;
+        }
+        img.alt = photo.name || "Photo";
+        img.addEventListener("click", () => {
+          const src = photo.data ? `data:${mime};base64,${photo.data}` : photo.url;
+          if (src) showTaskPhotoOverlay(src, photo.name || "Photo");
+        });
+        imgWrap.appendChild(img);
+      }
+
+      thumb.appendChild(imgWrap);
+
+      const footer = document.createElement("div");
+      footer.className = "task-photo-footer";
+
+      if (photo.name) {
+        const label = document.createElement("span");
+        label.className = "task-photo-label";
+        label.textContent = photo.name;
+        label.title = photo.name;
+        footer.appendChild(label);
+      }
+
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "task-photo-delete-btn";
+      deleteBtn.textContent = "Delete";
+      deleteBtn.addEventListener("click", () => deleteTaskPhoto(photo.name));
+      footer.appendChild(deleteBtn);
+
+      thumb.appendChild(footer);
+      gallery.appendChild(thumb);
+    });
+  }
+
+  async function deleteTaskPhoto(filename) {
+    if (!confirm(`Delete "${filename}"?`)) return;
+
+    const statusEl = document.getElementById("taskPhotoStatus");
+    showTaskPhotoStatus(statusEl, "uploading", `Deleting ${filename}\u2026`);
+
+    try {
+      const res = await Api.delete(CONFIG.WEBHOOK_TASK_PHOTOS, {
+        task_id: currentTask.id,
+        filename,
+      });
+      const result = await res.json();
+      if (res.ok && result.success !== false) {
+        showTaskPhotoStatus(statusEl, "success", `${filename} deleted`);
+        loadTaskPhotos();
+      } else {
+        showTaskPhotoStatus(statusEl, "error", result.message || "Delete failed");
+      }
+    } catch (err) {
+      console.error("[taskDetail] Task photo delete error:", err);
+      showTaskPhotoStatus(statusEl, "error", "Network error while deleting");
+    }
+    setTimeout(() => { if (statusEl) statusEl.innerHTML = ""; }, 4000);
+  }
+
+  function showTaskPhotoOverlay(src, alt) {
+    const overlay = document.createElement("div");
+    overlay.className = "coll-photo-overlay";
+    overlay.innerHTML = `
+      <div class="coll-photo-overlay-top">
+        <span class="coll-photo-overlay-title">${escapeHtml(alt)}</span>
+        <button class="coll-photo-overlay-close">&times;</button>
+      </div>
+      <img src="${src}" alt="${escapeHtml(alt)}">
+    `;
+    overlay.addEventListener("click", e => {
+      if (e.target === overlay || e.target.classList.contains("coll-photo-overlay-close")) {
+        overlay.remove();
+      }
+    });
+    document.body.appendChild(overlay);
+  }
+
+  function showTaskPhotoStatus(el, type, message) {
+    if (!el) return;
+    el.innerHTML = `<span class="coll-photo-status-msg coll-photo-status--${type}">${escapeHtml(message)}</span>`;
+  }
+
   // ── Set project ID (called from tasks.js) ──
 
   function setProjectId(pid) {
@@ -568,7 +882,10 @@ const TaskDetailView = (() => {
 
   // ── Register (no tab — accessed via task list, not nav) ──
 
-  Router.register("taskDetail", { template, mount });
+  Router.register("taskDetail", {
+    get template() { return buildTemplate(); },
+    mount,
+  });
 
-  return { render, renderPdfs, setLoadingPdfs, setProjectId, renderTeam };
+  return { render, renderPdfs, setLoadingPdfs, setProjectId, renderTeam, loadTaskPhotos };
 })();
