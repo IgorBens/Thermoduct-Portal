@@ -288,49 +288,51 @@ const Collectors = (() => {
 
     section.appendChild(drukRow);
 
-    // ── Selection: Foto's Uitvoering ──
-    const fotosRow = document.createElement("div");
-    fotosRow.className = "coll-status-row";
+    // ── Selection: Foto's Uitvoering (projectleider only) ──
+    if (Auth.hasRole("projectleider")) {
+      const fotosRow = document.createElement("div");
+      fotosRow.className = "coll-status-row";
 
-    const fotosLabel = document.createElement("span");
-    fotosLabel.className = "coll-status-label";
-    fotosLabel.textContent = "Foto\u2019s Uitvoering";
-    fotosRow.appendChild(fotosLabel);
+      const fotosLabel = document.createElement("span");
+      fotosLabel.className = "coll-status-label";
+      fotosLabel.textContent = "Foto\u2019s Uitvoering";
+      fotosRow.appendChild(fotosLabel);
 
-    const fotosSelect = document.createElement("select");
-    fotosSelect.className = "coll-status-select";
+      const fotosSelect = document.createElement("select");
+      fotosSelect.className = "coll-status-select";
 
-    [
-      { value: "",                  label: "Geen Foto\u2019s" },
-      { value: "fotos_geupload",    label: "Foto\u2019s Ge\u00fcpload" },
-      { value: "fotos_goedgekeurd", label: "Foto\u2019s Goedgekeurd" },
-    ].forEach(opt => {
-      const el = document.createElement("option");
-      el.value = opt.value;
-      el.textContent = opt.label;
-      fotosSelect.appendChild(el);
-    });
+      [
+        { value: "",                  label: "Geen Foto\u2019s" },
+        { value: "fotos_geupload",    label: "Foto\u2019s Ge\u00fcpload" },
+        { value: "fotos_goedgekeurd", label: "Foto\u2019s Goedgekeurd" },
+      ].forEach(opt => {
+        const el = document.createElement("option");
+        el.value = opt.value;
+        el.textContent = opt.label;
+        fotosSelect.appendChild(el);
+      });
 
-    if (collector.fotos_uitvoering) {
-      fotosSelect.value = collector.fotos_uitvoering;
-    }
-
-    fotosSelect.addEventListener("change", async () => {
-      try {
-        await Api.post(CONFIG.WEBHOOK_COLLECTOR_STATUS, {
-          project_id: projectId,
-          task_id: taskId,
-          collector_id: collectorId,
-          odoo_id: collector.id || null,
-          fotos_uitvoering: fotosSelect.value,
-        });
-      } catch (err) {
-        console.error("[collectors] Photo status update error:", err);
+      if (collector.fotos_uitvoering) {
+        fotosSelect.value = collector.fotos_uitvoering;
       }
-    });
 
-    fotosRow.appendChild(fotosSelect);
-    section.appendChild(fotosRow);
+      fotosSelect.addEventListener("change", async () => {
+        try {
+          await Api.post(CONFIG.WEBHOOK_COLLECTOR_STATUS, {
+            project_id: projectId,
+            task_id: taskId,
+            collector_id: collectorId,
+            odoo_id: collector.id || null,
+            fotos_uitvoering: fotosSelect.value,
+          });
+        } catch (err) {
+          console.error("[collectors] Photo status update error:", err);
+        }
+      });
+
+      fotosRow.appendChild(fotosSelect);
+      section.appendChild(fotosRow);
+    }
 
     return section;
   }
