@@ -81,7 +81,7 @@ const PhotosView = (() => {
     listEl.innerHTML = "";
 
     try {
-      const res = await Api.get(`${CONFIG.WEBHOOK_TASKS}/tasks-quick`, { past_days: "30" });
+      const res = await Api.get(`${CONFIG.WEBHOOK_TASKS}/tasks-quick`, { past_days: "7" });
       const text = await res.text();
       if (!res.ok) {
         statusEl.innerHTML = `<span class="error">HTTP ${res.status}</span>`;
