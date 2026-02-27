@@ -1,0 +1,315 @@
+/* ── Photos view: project list ── */
+
+.photos-project-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-top: 10px;
+  background: #fff;
+  overflow: hidden;
+  transition: box-shadow 0.15s;
+}
+
+.photos-project-card:hover {
+  box-shadow: 0 4px 12px rgba(0,151,167,0.1);
+}
+
+.photos-project-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.photos-project-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.photos-project-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 2px;
+}
+
+.photos-project-leader {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ── Photos view: group sections (blok / verdiep) ── */
+
+.photos-group {
+  margin-bottom: 8px;
+}
+
+.photos-group:last-child {
+  margin-bottom: 0;
+}
+
+.photos-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--primary);
+  color: #fff;
+  border-radius: var(--radius);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.photos-group-header:hover {
+  opacity: 0.9;
+}
+
+.photos-group-chevron {
+  display: inline-block;
+  font-size: 10px;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.photos-group-chevron.open {
+  transform: rotate(90deg);
+}
+
+.photos-group-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.photos-group-body {
+  display: none;
+  padding: 8px 0 0;
+}
+
+.photos-group-body.open {
+  display: block;
+}
+
+/* Verdiep nested inside blok */
+.photos-group-blok .photos-group-verdiep > .photos-group-header {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+/* Verdiep at top level */
+.photos-group-verdiep > .photos-group-header {
+  background: var(--primary-light);
+  color: var(--primary);
+  border: 1px solid var(--border);
+}
+
+/* Nested indentation */
+.photos-group-blok > .photos-group-body {
+  padding-left: 12px;
+}
+
+/* ── Photos view: collector section ── */
+
+.photos-collector {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.photos-collector:last-child {
+  margin-bottom: 0;
+}
+
+.photos-collector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #fff;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.photos-collector-header:hover {
+  background: var(--primary-light);
+}
+
+.photos-collector-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.photos-collector-chevron {
+  display: inline-block;
+  font-size: 10px;
+  color: var(--muted);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.photos-collector-chevron.open {
+  transform: rotate(90deg);
+}
+
+.photos-collector-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.photos-collector-body {
+  display: none;
+  padding: 0 14px 14px;
+  background: #fff;
+}
+
+.photos-collector-body.open {
+  display: block;
+}
+
+/* ── Photos gallery ── */
+
+.photos-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+.photos-thumb {
+  width: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: #fff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.photos-thumb--approved {
+  border-color: var(--success);
+  box-shadow: 0 0 0 1px var(--success);
+  background: #ecfdf5;
+}
+
+.photos-thumb--rejected {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 1px var(--danger);
+  background: #fef2f2;
+}
+
+.photos-img-wrap {
+  position: relative;
+  width: 108px;
+  height: 108px;
+}
+
+.photos-img-wrap img {
+  width: 108px;
+  height: 108px;
+  object-fit: cover;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.photos-img-wrap:hover img {
+  transform: scale(1.03);
+}
+
+.photos-label {
+  font-size: 10px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+  text-align: center;
+}
+
+/* ── Approve / Reject buttons ── */
+
+.photos-actions {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+}
+
+.photos-approve-btn,
+.photos-reject-btn {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 0;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid;
+  transition: background 0.15s, color 0.15s;
+}
+
+.photos-approve-btn {
+  border-color: var(--success);
+  background: transparent;
+  color: var(--success);
+}
+
+.photos-approve-btn:hover {
+  background: var(--success);
+  color: #fff;
+}
+
+.photos-approve-btn:disabled {
+  background: var(--success);
+  color: #fff;
+  opacity: 0.8;
+  cursor: default;
+}
+
+.photos-reject-btn {
+  border-color: var(--danger);
+  background: transparent;
+  color: var(--danger);
+}
+
+.photos-reject-btn:hover {
+  background: var(--danger);
+  color: #fff;
+}
+
+.photos-reject-btn:disabled {
+  background: var(--danger);
+  color: #fff;
+  opacity: 0.8;
+  cursor: default;
+}
+
+/* ── Responsive ── */
+
+@media (max-width: 600px) {
+  .photos-thumb {
+    width: 100px;
+  }
+
+  .photos-img-wrap,
+  .photos-img-wrap img {
+    width: 88px;
+    height: 88px;
+  }
+
+  .photos-approve-btn,
+  .photos-reject-btn {
+    font-size: 10px;
+    padding: 3px 0;
+  }
+}
