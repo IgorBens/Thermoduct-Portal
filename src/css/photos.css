@@ -1,5 +1,24 @@
 /* ── Photos view: project list ── */
 
+/* ── Photos view: date section headlines ── */
+
+.photos-date-section {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 14px 0 4px;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 2px;
+}
+
+.photos-date-section:first-child {
+  padding-top: 8px;
+}
+
+/* ── Photos view: project cards ── */
+
 .photos-project-card {
   border: 1px solid var(--border);
   border-radius: var(--radius);

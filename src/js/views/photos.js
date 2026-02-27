@@ -128,15 +128,19 @@ const PhotosView = (() => {
 
       allProjects = Object.values(projectMap);
 
-      // Determine the most recent task date per project
+      // Determine the most recent task date per project (only today & past)
+      const todayStr = getTodayString();
       allProjects.forEach(p => {
         let latest = "";
         p.tasks.forEach(t => {
           const d = getTaskDate(t);
-          if (d && d > latest) latest = d;
+          if (d && d <= todayStr && d > latest) latest = d;
         });
         p.latestDate = latest;
       });
+
+      // Remove projects that have no tasks on or before today
+      allProjects = allProjects.filter(p => p.latestDate);
 
       // Sort newest to oldest
       allProjects.sort((a, b) => (b.latestDate || "").localeCompare(a.latestDate || ""));
@@ -165,45 +169,58 @@ const PhotosView = (() => {
 
     statusEl.textContent = `${projects.length} project${projects.length === 1 ? "" : "s"} found.`;
 
+    // Group projects by date
+    const dateGroups = {};
     projects.forEach(project => {
-      const card = document.createElement("div");
-      card.className = "photos-project-card";
+      const key = project.latestDate || "";
+      if (!dateGroups[key]) dateGroups[key] = [];
+      dateGroups[key].push(project);
+    });
 
-      const header = document.createElement("div");
-      header.className = "photos-project-header";
+    // Sort date keys newest to oldest (already sorted projects, but group keys too)
+    const sortedDates = Object.keys(dateGroups).sort((a, b) => b.localeCompare(a));
 
-      const info = document.createElement("div");
-      info.className = "photos-project-info";
+    sortedDates.forEach(dateKey => {
+      // Section heading
+      const sectionHeader = document.createElement("div");
+      sectionHeader.className = "photos-date-section";
+      sectionHeader.textContent = dateKey ? formatDateLabel(dateKey) : "Unknown date";
+      listEl.appendChild(sectionHeader);
 
-      const name = document.createElement("div");
-      name.className = "photos-project-name";
-      name.textContent = project.name;
-      info.appendChild(name);
+      // Project cards for this date
+      dateGroups[dateKey].forEach(project => {
+        const card = document.createElement("div");
+        card.className = "photos-project-card";
 
-      if (project.leader) {
-        const leader = document.createElement("div");
-        leader.className = "photos-project-leader";
-        leader.textContent = project.leader;
-        info.appendChild(leader);
-      }
+        const header = document.createElement("div");
+        header.className = "photos-project-header";
 
-      if (project.latestDate) {
-        const date = document.createElement("div");
-        date.className = "photos-project-date";
-        date.textContent = formatDateLabel(project.latestDate);
-        info.appendChild(date);
-      }
+        const info = document.createElement("div");
+        info.className = "photos-project-info";
 
-      header.appendChild(info);
+        const name = document.createElement("div");
+        name.className = "photos-project-name";
+        name.textContent = project.name;
+        info.appendChild(name);
 
-      const openBtn = document.createElement("button");
-      openBtn.textContent = "Open";
-      openBtn.className = "secondary btn-sm";
-      openBtn.addEventListener("click", () => openProject(project));
-      header.appendChild(openBtn);
+        if (project.leader) {
+          const leader = document.createElement("div");
+          leader.className = "photos-project-leader";
+          leader.textContent = project.leader;
+          info.appendChild(leader);
+        }
 
-      card.appendChild(header);
-      listEl.appendChild(card);
+        header.appendChild(info);
+
+        const openBtn = document.createElement("button");
+        openBtn.textContent = "Open";
+        openBtn.className = "secondary btn-sm";
+        openBtn.addEventListener("click", () => openProject(project));
+        header.appendChild(openBtn);
+
+        card.appendChild(header);
+        listEl.appendChild(card);
+      });
     });
   }
 
